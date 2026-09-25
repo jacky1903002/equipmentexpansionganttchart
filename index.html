@@ -113,9 +113,6 @@
 
     <!-- 邏輯腳本 -->
     <script>
-        // ==========================================
-        // 已帶入您的 Firebase 專案設定值
-        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
             authDomain: "equipmentexpansionganttchart.firebaseapp.com",
@@ -136,20 +133,31 @@
         let isLoggedIn = false;
 
         window.addEventListener('DOMContentLoaded', () => {
-            // 監聽 Firebase 登入狀態變化
             auth.onAuthStateChanged((user) => {
-                if (user) {
-                    isLoggedIn = true;
-                } else {
-                    isLoggedIn = false;
-                }
+                isLoggedIn = !!user;
                 updateUIPermissions();
             });
-
             loadFromCloud();
         });
 
-        // 登入處理
+        // 輔助函式：將任何長日期字串或 Date 物件轉為 YYYY/MM/DD 格式
+        function formatDateClean(val) {
+            if (!val) return "";
+            const str = String(val).trim();
+            // 嘗試解析成日期
+            const d = new Date(str);
+            if (!isNaN(d.getTime()) && (str.includes("GMT") || str.includes("T") || str.length > 10)) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                // 確保年份合理（避免誤判一般文字）
+                if (year >= 2000 && year <= 2100) {
+                    return `${year}/${month}/${day}`;
+                }
+            }
+            return str;
+        }
+
         function handleLogin() {
             const email = document.getElementById('login-email').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
@@ -168,7 +176,7 @@
                 })
                 .catch((error) => {
                     console.error(error);
-                    errEl.innerText = "登入失敗：請確認 Email 與密碼是否正確，或已在 Firebase Console 啟用 Email/Password 驗證。";
+                    errEl.innerText = "登入失敗：請確認 Email 與密碼是否正確。";
                     errEl.classList.remove('hidden');
                 });
         }
@@ -187,7 +195,6 @@
             });
         }
 
-        // 更新介面權限
         function updateUIPermissions() {
             const badge = document.getElementById('auth-status-badge');
             const logoutBtn = document.getElementById('logout-btn');
@@ -217,13 +224,21 @@
             }
         }
 
-        // 從雲端載入資料
         function loadFromCloud() {
             const statusEl = document.getElementById('sync-status');
             rtdb.ref('ganttSystem/mainData').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data && data.sheets) {
                     appData = data;
+                    // 清理所有現有資料中的冗長日期格式
+                    appData.sheets.forEach(sheet => {
+                        sheet.rows.forEach(row => {
+                            if (row.length > 4) {
+                                row[4] = formatDateClean(row[4]);
+                                row[5] = formatDateClean(row[5]);
+                            }
+                        });
+                    });
                     statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
                     statusEl.innerText = "✅ 已連線 Realtime DB";
                 } else {
@@ -232,8 +247,8 @@
                             name: "機台擴張排程",
                             columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/1/1", "2026/8/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/3/1", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
                             ]
                         }]
                     };
@@ -355,9 +370,13 @@
 
         function updateCell(rIdx, cIdx, val) {
             if (!isLoggedIn) return;
+            // 如果修改的是日期欄位，自動清理格式
+            if (cIdx === 4 || cIdx === 5) {
+                val = formatDateClean(val);
+            }
             appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
             saveToCloud();
-            renderGanttChart();
+            renderApp();
         }
 
         function addColumn() {
@@ -458,10 +477,10 @@
                     else if (type.includes('實際')) actualItem = row;
                 });
 
-                let planStart = planItem ? String(planItem[4] || '') : '';
-                let planEnd = planItem ? String(planItem[5] || '') : '';
-                let actualStart = actualItem ? String(actualItem[4] || '') : '';
-                let actualEnd = actualItem ? String(actualItem[5] || '') : '';
+                let planStart = planItem ? formatDateClean(planItem[4]) : '';
+                let planEnd = planItem ? formatDateClean(planItem[5]) : '';
+                let actualStart = actualItem ? formatDateClean(actualItem[4]) : '';
+                let actualEnd = actualItem ? formatDateClean(actualItem[5]) : '';
                 let hasActualEnd = actualEnd && actualEnd.trim() !== '';
                 
                 let isDelayed = false;
@@ -575,7 +594,18 @@
                         let hIdx = json.findIndex(row => row.some(cell => cell !== ""));
                         if (hIdx === -1) return;
                         const columns = json[hIdx].map(c => String(c).trim()).filter(c => c !== "");
-                        const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => columns.map((_, i) => row[i] !== undefined ? String(row[i]) : ""));
+                        
+                        const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => {
+                            return columns.map((_, i) => {
+                                let val = row[i] !== undefined ? row[i] : "";
+                                // 如果是第 4 或第 5 欄（通常為開始/完成日期），進行日期格式鎖定
+                                if (i === 4 || i === 5) {
+                                    val = formatDateClean(val);
+                                }
+                                return String(val);
+                            });
+                        });
+                        
                         newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")] });
                     }
                 });
@@ -584,7 +614,7 @@
                     currentSheetIndex = 0;
                     saveToCloud();
                     renderApp();
-                    alert("🎉 匯入 Excel 並同步至雲端成功！");
+                    alert("🎉 匯入 Excel 並成功鎖定日期格式為 YYYY/MM/DD！");
                 }
             };
             reader.readAsBinaryString(file);
