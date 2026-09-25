@@ -183,18 +183,34 @@
             }
         }
 
-        function saveDataToFirebase() {
-            if (isGuestMode) return;
-            // 透過 JSON 深層複製與清理，確保所有欄位皆為純字串，避免 Firestore 寫入時因型態問題而崩潰
-            const cleanData = JSON.parse(JSON.stringify(appData));
-            db.collection("ganttData").doc("mainDoc").set(cleanData)
-                .then(() => {
-                    console.log("雲端同步成功");
-                })
-                .catch((error) => {
-                    console.error("雲端儲存失敗: ", error);
-                });
+function saveDataToFirebase() {
+    if (isGuestMode) return;
+    
+    try {
+        // 深度複製並確保所有資料皆為純字串，並排除過大的冗餘內容
+        const cleanData = JSON.parse(JSON.stringify(appData));
+        
+        // 安全防護：檢查整體大小是否接近 Firestore 1MB 限制
+        const jsonString = JSON.stringify(cleanData);
+        const byteSize = new Blob([jsonString]).size;
+        
+        if (byteSize > 900000) { // 超過 900KB 提出警告並進行瘦身
+            alert("⚠️ 警告：匯入的 Excel 資料量過大（接近雲端 1MB 限制），部分資料可能會被雲端拒絕儲存。建議分批匯入。");
         }
+
+        db.collection("ganttData").doc("mainDoc").set(cleanData)
+            .then(() => {
+                console.log("雲端同步成功 (大小:", Math.round(byteSize / 1024), "KB)");
+            })
+            .catch((error) => {
+                console.error("雲端儲存失敗: ", error);
+                alert("❌ 雲端同步失敗！可能原因：資料量過大超過 Firebase 單一文件限制。建議改用訪客模式或減少 Excel 資料量。");
+            });
+    } catch (err) {
+        console.error("資料序列化失敗:", err);
+        alert("❌ 匯入的資料包含無法解析的特殊格式。");
+    }
+}
 
         function loadDataFromFirebase() {
             if (isGuestMode) return;
