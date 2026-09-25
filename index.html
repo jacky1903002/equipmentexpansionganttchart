@@ -116,6 +116,12 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // 設定登入狀態保持在 LocalStorage，避免重新整理或網路波動就被登出
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .catch((error) => {
+                console.error("設定保持登入失敗: ", error);
+            });
+
         let appData = {
             sheets: [
                 {
@@ -130,6 +136,7 @@
         };
         let currentSheetIndex = 0;
 
+        // 監聽登入狀態
         auth.onAuthStateChanged((user) => {
             if (user) {
                 document.getElementById('login-screen').classList.add('hidden');
@@ -303,7 +310,6 @@
             renderApp();
         }
 
-        // 依據機台將「計畫」與「實際」上下整合在同一張卡片中
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -316,7 +322,6 @@
                 }
             });
 
-            // 以機台名稱群組資料 (key = 機台名稱, value = { dept, clazz, rows: [] })
             const machineMap = {};
             sheet.rows.forEach(row => {
                 const dept = row[0] || '';
@@ -330,17 +335,14 @@
                 machineMap[key].items.push(row);
             });
 
-            // 開始針對每個機台渲染整合卡片
             Object.values(machineMap).forEach(group => {
                 const div = document.createElement('div');
                 div.className = 'border rounded-lg p-3 bg-gray-50 flex flex-col gap-3';
                 
-                // 單一機台頂部標頭
                 let headerInfo = `<div class="text-xs font-bold text-gray-700">${group.dept} / ${group.clazz} / <span class="text-blue-600 text-sm">${group.machine}</span></div>`;
                 
                 let subRowsHtml = '<div class="space-y-2 pl-2 border-l-2 border-blue-200">';
                 
-                // 找出計畫開始日以便對比實際落後
                 let planStart = '';
                 group.items.forEach(row => {
                     if ((row[3] || '').includes('計畫')) {
@@ -348,7 +350,6 @@
                     }
                 });
 
-                // 排序確保「計畫」在上方，「實際」在下方
                 group.items.sort((a, b) => {
                     const typeA = a[3] || '';
                     const typeB = b[3] || '';
@@ -417,12 +418,8 @@
             });
         }
 
-        // 僅針對甘特圖區塊匯出 PNG 圖片
         function exportGanttPNG() {
             const element = document.getElementById('gantt-export-area');
-            html2canvas(element, { scale: 2, useCORS: true }).text => {
-                // fixing callback syntax cleanly
-            };
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
