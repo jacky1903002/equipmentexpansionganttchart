@@ -140,7 +140,6 @@
             loadFromCloud();
         });
 
-        // 輔助函式：將任何長日期字串或 Date 物件轉為 YYYY/MM/DD 格式
         function formatDateClean(val) {
             if (!val) return "";
             const str = String(val).trim();
@@ -156,7 +155,6 @@
             return str;
         }
 
-        // 輔助函式：將欄位標題（如日期或月份欄）轉為簡短的 YYYY/MM/DD 或 YYYY-MM 格式
         function formatHeaderClean(val) {
             if (!val) return "";
             const str = String(val).trim();
@@ -166,7 +164,6 @@
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
                 if (year >= 2000 && year <= 2100) {
-                    // 如果是每月第一天（如 01 號），可以顯示成 YYYY-MM，或者直接顯示 YYYY/MM/DD
                     return `${year}/${month}/${day}`;
                 }
             }
@@ -245,8 +242,8 @@
                 const data = snapshot.val();
                 if (data && data.sheets) {
                     appData = data;
-                    // 清理所有現有資料中的冗長日期格式
                     appData.sheets.forEach(sheet => {
+                        if (!sheet.notes) sheet.notes = {}; // 初始化備註物件
                         sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
                         sheet.rows.forEach(row => {
                             if (row.length > 4) {
@@ -265,7 +262,8 @@
                             rows: [
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
-                            ]
+                            ],
+                            notes: {}
                         }]
                     };
                     saveToCloud();
@@ -315,7 +313,8 @@
             appData.sheets.push({
                 name: name.trim(),
                 columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]]
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]],
+                notes: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
             saveToCloud();
@@ -394,6 +393,14 @@
             renderApp();
         }
 
+        function updateMachineNote(machineKey, val) {
+            if (!isLoggedIn) return;
+            const sheet = appData.sheets[currentSheetIndex];
+            if (!sheet.notes) sheet.notes = {};
+            sheet.notes[machineKey] = val;
+            saveToCloud();
+        }
+
         function addColumn() {
             if (!isLoggedIn) return;
             const colName = prompt("請輸入新欄位名稱 (例如 2026/01/01)：", "2026/01/01");
@@ -445,9 +452,7 @@
                 let isMonthCol = false;
                 let displayName = cStr;
 
-                // 判斷是否為日期/月份欄位（包含含有斜線、橫線或英文月份的標題）
                 if (cStr.includes('/') || cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
-                    // 如果是標準 YYYY/MM/DD 或 YYYY-MM-DD，轉成簡短的英文月份顯示於甘特圖上方 (例如 Jan-26)
                     const d = new Date(cStr);
                     if (!isNaN(d.getTime())) {
                         const yr = String(d.getFullYear()).slice(-2);
@@ -457,7 +462,6 @@
                     isMonthCol = true;
                 }
                 
-                // 前4欄（部門、課別、機台、類別）與日期區間欄（開始日期、完成日期）略過不當作矩陣行
                 if (idx >= 6 || isMonthCol) {
                     if (idx >= 6) {
                         isMonthCol = true;
@@ -482,10 +486,12 @@
                 const machine = row[2] || '未命名機台';
                 const key = `${dept}_${clazz}_${machine}`;
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, items: [] };
+                    machineMap[key] = { dept, clazz, machine, items: [], keyName: key };
                 }
                 machineMap[key].items.push(row);
             });
+
+            if (!sheet.notes) sheet.notes = {};
 
             Object.values(machineMap).forEach(group => {
                 const div = document.createElement('div');
@@ -556,7 +562,7 @@
                     </div>`;
                 }
 
-                let matrixHtml = '<div class="pt-3"><div class="flex space-x-1.5 overflow-x-auto pb-1">';
+                let matrixHtml = '<div class="pt-2"><div class="flex space-x-1.5 overflow-x-auto pb-1">';
                 if (monthCols.length > 0) {
                     monthCols.forEach(m => {
                         const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
@@ -580,7 +586,16 @@
                     });
                 }
                 matrixHtml += '</div></div>';
-                contentHtml += matrixHtml + '</div>';
+                contentHtml += matrixHtml;
+
+                // 新增：每個機台甘特圖下方獨立的文字備註輸入框
+                const currentNote = sheet.notes[group.keyName] || '';
+                let noteHtml = `<div class="mt-2 pt-2 border-t border-gray-200">
+                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">📝 備註 / 說明文字：</label>
+                    <input type="text" value="${currentNote}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="點擊此處輸入該機台的備註或說明..." class="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>`;
+
+                contentHtml += noteHtml + '</div>';
                 div.innerHTML = headerInfo + contentHtml;
                 container.appendChild(div);
             });
@@ -623,9 +638,7 @@
                         let hIdx = json.findIndex(row => row.some(cell => cell !== ""));
                         if (hIdx === -1) return;
                         
-                        // 處理欄位標題，自動將長日期格式轉為乾淨的 YYYY/MM/DD
                         const columns = json[hIdx].map(c => formatHeaderClean(c)).filter(c => c !== "");
-                        
                         const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => {
                             return columns.map((_, i) => {
                                 let val = row[i] !== undefined ? row[i] : "";
@@ -636,7 +649,7 @@
                             });
                         });
                         
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")] });
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
                     }
                 });
                 if (newSheets.length > 0) {
@@ -644,7 +657,7 @@
                     currentSheetIndex = 0;
                     saveToCloud();
                     renderApp();
-                    alert("🎉 匯入 Excel 成功！欄位標題與日期已全面鎖定為簡潔格式。");
+                    alert("🎉 匯入 Excel 成功！");
                 }
             };
             reader.readAsBinaryString(file);
