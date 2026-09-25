@@ -253,7 +253,7 @@
                         });
                     });
                     statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
-                    statusEl.innerText = "✅ 已連線 Realtime DB";
+                    statusEl.innerText = "✅ 已連線雲端資料庫";
                 } else {
                     appData = {
                         sheets: [{
@@ -495,12 +495,14 @@
 
             Object.values(machineMap).forEach(group => {
                 const div = document.createElement('div');
-                div.className = 'border rounded-xl p-4 bg-gray-50 flex flex-col gap-3 shadow-sm';
+                div.className = 'border rounded-xl p-4 bg-gray-50 flex flex-col gap-3 shadow-sm hover:shadow-md transition';
                 
-                let headerInfo = `<div class="text-xs font-bold text-gray-700 flex items-center gap-2">
-                    <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.dept}</span> / 
-                    <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.clazz}</span> / 
-                    <span class="text-blue-600 text-sm font-extrabold">${group.machine}</span>
+                let headerInfo = `<div class="text-xs font-bold text-gray-700 flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.dept}</span> / 
+                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.clazz}</span> / 
+                        <span class="text-blue-600 text-sm font-extrabold">${group.machine}</span>
+                    </div>
                 </div>`;
                 
                 let planItem = null;
@@ -540,24 +542,24 @@
 
                 if (planItem) {
                     contentHtml += `<div class="flex items-center space-x-2">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-900 border border-sky-400">計畫</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-900 border border-sky-400 shadow-sm">計畫</span>
                         <span class="text-xs text-gray-600 font-medium">${planStart} ~ ${planEnd}</span>
                     </div>`;
                 }
 
                 if (actualItem) {
                     let actualBadgeClass = 'bg-emerald-500 text-white';
-                    let actualLabel = '實際';
+                    let actualLabel = '實際正常';
                     if (isDelayed) {
                         actualBadgeClass = 'bg-rose-500 text-white';
-                        actualLabel = hasActualEnd ? '實際 (落後/延後)' : '實際 (未完工/落後)';
+                        actualLabel = hasActualEnd ? '實際落後' : '實際 (未完工/落後)';
                     } else if (isCompleted) {
                         actualBadgeClass = 'bg-purple-600 text-white';
-                        actualLabel = '實際 (已完成)';
+                        actualLabel = '實際已完成';
                     }
                     let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass} shadow-sm">${actualLabel}</span>
                         <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
                     </div>`;
                 }
@@ -567,21 +569,21 @@
                     monthCols.forEach(m => {
                         const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
                         const pActive = pVal !== '' && pVal !== '0';
-                        const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900' : 'bg-gray-200';
+                        const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900 shadow-sm' : 'bg-gray-200/70';
 
                         const aVal = actualItem ? String(actualItem[m.index] || '').trim() : '';
                         const aActive = aVal !== '' && aVal !== '0';
-                        let aCellBg = 'bg-gray-200';
+                        let aCellBg = 'bg-gray-200/70';
                         if (aActive) {
-                            if (isDelayed) aCellBg = 'bg-rose-500 text-white';
-                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white';
-                            else aCellBg = 'bg-emerald-500 text-white';
+                            if (isDelayed) aCellBg = 'bg-rose-500 text-white shadow-sm';
+                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white shadow-sm';
+                            else aCellBg = 'bg-emerald-500 text-white shadow-sm';
                         }
 
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
-                            <span class="text-[11px] text-gray-600 font-bold">${m.name}</span>
-                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm">${pActive ? 'V' : ''}</div>
-                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm">${aActive ? 'V' : ''}</div>
+                            <span class="text-[11px] text-gray-500 font-semibold">${m.name}</span>
+                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold">${pActive ? '✓' : ''}</div>
+                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold">${aActive ? '✓' : ''}</div>
                         </div>`;
                     });
                 }
