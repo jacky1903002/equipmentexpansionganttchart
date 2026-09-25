@@ -270,13 +270,11 @@
             renderApp();
         }
 
-        // 即時同步：當在表格輸入時即時更新資料並重新渲染甘特圖
         function updateCellInstant(rIdx, cIdx, val) {
             appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
             renderGanttChart();
         }
 
-        // 儲存至資料庫
         function updateCell(rIdx, cIdx, val) {
             appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
             saveDataToFirebase();
@@ -316,7 +314,6 @@
             renderApp();
         }
 
-        // 甘特圖渲染與狀態判斷（支援即時同步與已結案標示）
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -364,7 +361,6 @@
                 let actualStart = actualItem ? (actualItem[4] || '') : '';
                 let actualEnd = actualItem ? (actualItem[5] || '') : '';
                 
-                // 檢查是否已結案 (實際完成日期有填寫即視為已結案)
                 let isCompleted = actualEnd && actualEnd.trim() !== '';
                 let isDelayed = false;
 
@@ -377,7 +373,6 @@
 
                 let contentHtml = '<div class="space-y-2 pl-2 border-l-2 border-blue-200">';
 
-                // 1. 計畫行
                 if (planItem) {
                     const pStart = planItem[4] || '';
                     const pEnd = planItem[5] || '';
@@ -387,7 +382,6 @@
                     </div>`;
                 }
 
-                // 2. 實際行（若已結案顯示「已完成」，否則顯示正常或落後）
                 if (actualItem) {
                     let actualBadgeClass = 'bg-emerald-500 text-white';
                     let actualLabel = '實際';
@@ -406,7 +400,6 @@
                     </div>`;
                 }
 
-                // 3. 月份矩陣對齊與顏色呈現
                 let matrixHtml = '<div class="pt-2"><div class="flex space-x-1 overflow-x-auto">';
                 if (monthCols.length > 0) {
                     monthCols.forEach(m => {
@@ -473,25 +466,38 @@
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
+
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                appData.sheets = [];
-                workbook.SheetNames.forEach(sheetName => {
-                    const worksheet = workbook.Sheets[sheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    if (json.length > 0) {
-                        const columns = json[0].map(String);
-                        const rows = json.slice(1).map(row => row.map(cell => cell !== undefined ? String(cell) : ""));
-                        appData.sheets.push({ name: sheetName, columns, rows: rows.length ? rows : [new Array(columns.length).fill("")] });
-                    }
-                });
-                currentSheetIndex = 0;
-                saveDataToFirebase();
-                renderApp();
-                alert("Excel 匯入成功！");
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    appData.sheets = [];
+                    workbook.SheetNames.forEach(sheetName => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        if (json.length > 0) {
+                            const columns = json[0].map(String);
+                            const rows = json.slice(1).map(row => row.map(cell => cell !== undefined ? String(cell) : ""));
+                            appData.sheets.push({ name: sheetName, columns, rows: rows.length ? rows : [new Array(columns.length).fill("")] });
+                        }
+                    });
+                    currentSheetIndex = 0;
+                    saveDataToFirebase();
+                    renderApp();
+                    alert("Excel 匯入成功！");
+                } catch (err) {
+                    console.error("解析 Excel 失敗:", err);
+                    alert("解析 Excel 失敗，請確認檔案格式是否正確。");
+                } finally {
+                    event.target.value = ''; // 重置 input 確保可重複匯入同一個檔案
+                }
+            };
+            reader.onerror = function(err) {
+                console.error("讀取檔案失敗:", err);
+                alert("讀取檔案失敗！");
+                event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
         }
