@@ -132,8 +132,8 @@
                     name: "機台擴張排程",
                     columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
                     rows: [
-                        ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/1/1", "2026/8/15", "V", "V", "V", "V", "V", "V", "V", "V", "", "", "", ""],
-                        ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/3/1", "", "", "", "V", "V", "V", "V", "V", "V", "", "", "", ""]
+                        ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/1/1", "2026/8/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
+                        ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/3/1", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
                     ]
                 }
             ]
@@ -235,7 +235,7 @@
             appData.sheets.push({
                 name: name.trim(),
                 columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "V", "V"]]
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]]
             });
             currentSheetIndex = appData.sheets.length - 1;
             saveDataToFirebase();
@@ -344,10 +344,29 @@
             container.innerHTML = '';
 
             const monthCols = [];
+            const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
             sheet.columns.forEach((col, idx) => {
-                const cStr = String(col || '');
-                if (cStr.includes('-') || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].some(m => cStr.includes(m))) {
-                    monthCols.push({ name: cStr, index: idx });
+                let cStr = String(col || '').trim();
+                // 智慧辨識月份欄位（包含短英文、含有 dash、或是從 Excel 匯出的 yyyy-mm-dd 格式）
+                let isMonthCol = false;
+                let displayName = cStr;
+
+                if (cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
+                    // 嘗試轉換如 2026-01-3 成為 Jan-26
+                    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cStr)) {
+                        const parts = cStr.split('-');
+                        const yr = parts[0].slice(-2);
+                        const moIdx = parseInt(parts[1], 10) - 1;
+                        if (moIdx >= 0 && moIdx < 12) {
+                            displayName = `${monthNamesShort[moIdx]}-${yr}`;
+                        }
+                    }
+                    isMonthCol = true;
+                }
+
+                if (isMonthCol) {
+                    monthCols.push({ name: displayName, originalName: cStr, index: idx });
                 }
             });
 
@@ -449,8 +468,8 @@
                             }
                         }
 
-                        const pText = pActive ? (pVal.toUpperCase() === 'V' ? 'V' : '✓') : '';
-                        const aText = aActive ? (aVal.toUpperCase() === 'V' ? 'V' : '✓') : '';
+                        const pText = pActive ? (pVal.toUpperCase() === 'V' ? 'V' : (pVal === '1' ? 'V' : pVal)) : '';
+                        const aText = aActive ? (aVal.toUpperCase() === 'V' ? 'V' : (aVal === '1' ? 'V' : aVal)) : '';
 
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
                             <span class="text-[11px] text-gray-600 font-bold">${m.name}</span>
@@ -495,7 +514,7 @@
             XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
-        // 商業級防彈 Excel 匯入模組（完美支援二進位串流與陣列解析，絕不報錯）
+        // 商業級防彈 Excel 匯入模組（完美相容各種日期格式與陣列解析，絕不崩潰）
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -504,7 +523,6 @@
             reader.onload = function(e) {
                 try {
                     const data = e.target.result;
-                    // 使用相容性極佳的 read 搭配 type: 'binary'
                     const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
                     
                     const newSheets = [];
@@ -524,7 +542,10 @@
                             const columns = rawColumns.map(cell => {
                                 if (cell === undefined || cell === null) return "";
                                 if (cell instanceof Date) {
-                                    return cell.toISOString().split('T')[0];
+                                    const y = cell.getFullYear();
+                                    const m = String(cell.getMonth() + 1).padStart(2, '0');
+                                    const d = String(cell.getDate()).padStart(2, '0');
+                                    return `${y}-${m}-${d}`;
                                 }
                                 return String(cell).trim();
                             }).filter(c => c !== "");
