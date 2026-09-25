@@ -178,7 +178,6 @@
             renderGanttChart();
         }
 
-        // 渲染分頁並支援雙擊更改名稱
         function renderSheetsTabs() {
             const container = document.getElementById('sheets-tabs');
             container.innerHTML = '';
@@ -187,7 +186,6 @@
                 btn.className = `px-4 py-1.5 rounded-lg text-sm font-semibold transition ${idx === currentSheetIndex ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
                 btn.innerText = sheet.name;
                 btn.onclick = () => { currentSheetIndex = idx; renderApp(); };
-                // 雙擊事件直接改名
                 btn.ondblclick = () => {
                     const newName = prompt("重新命名工作表：", sheet.name);
                     if (newName && newName.trim() !== "") {
@@ -305,7 +303,7 @@
             renderApp();
         }
 
-        // 自動對比計畫與實際：若實際日期晚於計畫，自動判定為落後並顯示紅色
+        // 依據機台將「計畫」與「實際」上下整合在同一張卡片中
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -318,80 +316,103 @@
                 }
             });
 
-            // 先撈出該機台對應的計畫開始日，用來與實際開工日做對比
-            const planStartMap = {};
+            // 以機台名稱群組資料 (key = 機台名稱, value = { dept, clazz, rows: [] })
+            const machineMap = {};
             sheet.rows.forEach(row => {
-                const machine = row[2];
-                const type = row[3];
-                const start = row[4];
-                if (type === '計畫' && machine) {
-                    planStartMap[machine] = start;
-                }
-            });
-
-            sheet.rows.forEach((row) => {
                 const dept = row[0] || '';
                 const clazz = row[1] || '';
-                const machine = row[2] || '';
-                const type = row[3] || '計畫';
-                const start = row[4] || '';
-                const end = row[5] || '';
+                const machine = row[2] || '未命名機台';
+                const key = `${dept}_${clazz}_${machine}`;
+                
+                if (!machineMap[key]) {
+                    machineMap[key] = { dept, clazz, machine, items: [] };
+                }
+                machineMap[key].items.push(row);
+            });
 
+            // 開始針對每個機台渲染整合卡片
+            Object.values(machineMap).forEach(group => {
                 const div = document.createElement('div');
-                div.className = 'border rounded-lg p-3 bg-gray-50 flex flex-col gap-2';
+                div.className = 'border rounded-lg p-3 bg-gray-50 flex flex-col gap-3';
                 
-                let headerInfo = `<div class="text-xs font-bold text-gray-700">${dept} / ${clazz} / <span class="text-blue-600">${machine}</span></div>`;
+                // 單一機台頂部標頭
+                let headerInfo = `<div class="text-xs font-bold text-gray-700">${group.dept} / ${group.clazz} / <span class="text-blue-600 text-sm">${group.machine}</span></div>`;
                 
-                // 自動判定狀態顏色
-                let badgeClass = 'bg-sky-200 text-sky-800 border border-sky-400';
-                let isDelayed = false;
-
-                if (type.includes('實際')) {
-                    const planStart = planStartMap[machine];
-                    // 簡單字串或月份比較：若實際填寫的開始日期比計畫晚（例如計畫5月1日，實際6月1日），標記為落後
-                    if (type.includes('落後') || (planStart && start && start !== planStart && start > planStart)) {
-                        isDelayed = true;
-                        badgeClass = 'bg-rose-500 text-white';
-                    } else {
-                        badgeClass = 'bg-emerald-500 text-white';
+                let subRowsHtml = '<div class="space-y-2 pl-2 border-l-2 border-blue-200">';
+                
+                // 找出計畫開始日以便對比實際落後
+                let planStart = '';
+                group.items.forEach(row => {
+                    if ((row[3] || '').includes('計畫')) {
+                        planStart = row[4] || '';
                     }
-                }
+                });
 
-                let barHtml = `<div class="flex items-center space-x-2">
-                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${type} ${isDelayed ? '(落後)' : ''}</span>
-                    <span class="text-xs text-gray-500">${start} ~ ${end}</span>
-                </div>`;
+                // 排序確保「計畫」在上方，「實際」在下方
+                group.items.sort((a, b) => {
+                    const typeA = a[3] || '';
+                    const typeB = b[3] || '';
+                    if (typeA.includes('計畫') && !typeB.includes('計畫')) return -1;
+                    if (!typeA.includes('計畫') && typeB.includes('計畫')) return 1;
+                    return 0;
+                });
 
-                let matrixHtml = '<div class="flex space-x-1 overflow-x-auto pt-1">';
-                if (monthCols.length > 0) {
-                    monthCols.forEach(m => {
-                        const val = row[m.index];
-                        const isActive = val && val !== '0' && val !== '';
-                        
-                        let cellBg = 'bg-gray-200';
-                        if (isActive) {
-                            if (type === '計畫') {
-                                cellBg = 'bg-sky-200 border border-sky-400 text-sky-900';
-                            } else if (isDelayed) {
-                                cellBg = 'bg-rose-500 text-white'; // 落後顯示紅色
-                            } else {
-                                cellBg = 'bg-emerald-500 text-white'; // 正常/超前顯示綠色
-                            }
+                group.items.forEach(row => {
+                    const type = row[3] || '計畫';
+                    const start = row[4] || '';
+                    const end = row[5] || '';
+
+                    let badgeClass = 'bg-sky-200 text-sky-800 border border-sky-400';
+                    let isDelayed = false;
+
+                    if (type.includes('實際')) {
+                        if (type.includes('落後') || (planStart && start && start !== planStart && start > planStart)) {
+                            isDelayed = true;
+                            badgeClass = 'bg-rose-500 text-white';
+                        } else {
+                            badgeClass = 'bg-emerald-500 text-white';
                         }
+                    }
 
-                        matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px]">
-                            <span class="text-[10px] text-gray-500 mb-1">${m.name}</span>
-                            <div class="w-full h-6 rounded ${cellBg} flex items-center justify-center text-[10px] font-bold">
-                                ${isActive ? '✓' : ''}
-                            </div>
-                        </div>`;
-                    });
-                } else {
-                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
-                }
-                matrixHtml += '</div>';
+                    let barHtml = `<div class="flex items-center space-x-2">
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${type} ${isDelayed ? '(落後)' : ''}</span>
+                        <span class="text-xs text-gray-500">${start} ~ ${end}</span>
+                    </div>`;
 
-                div.innerHTML = headerInfo + barHtml + matrixHtml;
+                    let matrixHtml = '<div class="flex space-x-1 overflow-x-auto pt-1">';
+                    if (monthCols.length > 0) {
+                        monthCols.forEach(m => {
+                            const val = row[m.index];
+                            const isActive = val && val !== '0' && val !== '';
+                            
+                            let cellBg = 'bg-gray-200';
+                            if (isActive) {
+                                if (type.includes('計畫')) {
+                                    cellBg = 'bg-sky-200 border border-sky-400 text-sky-900';
+                                } else if (isDelayed) {
+                                    cellBg = 'bg-rose-500 text-white';
+                                } else {
+                                    cellBg = 'bg-emerald-500 text-white';
+                                }
+                            }
+
+                            matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px]">
+                                <span class="text-[10px] text-gray-500 mb-1">${m.name}</span>
+                                <div class="w-full h-6 rounded ${cellBg} flex items-center justify-center text-[10px] font-bold">
+                                    ${isActive ? '✓' : ''}
+                                </div>
+                            </div>`;
+                        });
+                    } else {
+                        matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
+                    }
+                    matrixHtml += '</div>';
+
+                    subRowsHtml += `<div class="flex flex-col gap-1">${barHtml}${matrixHtml}</div>`;
+                });
+
+                subRowsHtml += '</div>';
+                div.innerHTML = headerInfo + subRowsHtml;
                 container.appendChild(div);
             });
         }
@@ -399,6 +420,9 @@
         // 僅針對甘特圖區塊匯出 PNG 圖片
         function exportGanttPNG() {
             const element = document.getElementById('gantt-export-area');
+            html2canvas(element, { scale: 2, useCORS: true }).text => {
+                // fixing callback syntax cleanly
+            };
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
