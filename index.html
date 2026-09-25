@@ -20,7 +20,7 @@
                 <span>📊</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-normal">專業商業版</span>
             </h1>
             <div class="flex items-center space-x-4">
-                <span id="user-info" class="text-sm text-gray-600 font-medium">使用者: 本地端模式</span>
+                <span id="user-info" class="text-sm text-gray-600 font-medium">使用者: 本地端模式 (今日: 2026-09-25)</span>
             </div>
         </header>
 
@@ -69,7 +69,7 @@
                         <div class="flex items-center space-x-3 text-xs bg-gray-50 px-3 py-1.5 rounded-lg border">
                             <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫 (Baseline)</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常/超前</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後 (含延後完工)</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後 (含未完工逾期)</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成 (如期/提前)</span>
                         </div>
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
@@ -254,6 +254,8 @@
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
+            const today = new Date('2026-09-25'); // 固定當前基準日
+
             const monthCols = [];
             const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             
@@ -321,10 +323,6 @@
                 
                 let hasActualEnd = actualEnd && actualEnd.trim() !== '';
                 
-                // 判斷是否落後：
-                // 1. 類別名稱本身包含「落後」
-                // 2. 實際開始日期晚於計畫開始日期
-                // 3. 【新增】實際完成日期晚於計畫完成日期（延後完工也視同落後）
                 let isDelayed = false;
                 if (actualItem) {
                     const typeStr = String(actualItem[3] || '');
@@ -332,12 +330,18 @@
                         isDelayed = true;
                     } else if (planStart && actualStart && actualStart > planStart) {
                         isDelayed = true;
-                    } else if (planEnd && actualEnd && actualEnd > planEnd) {
+                    } else if (hasActualEnd && planEnd && actualEnd > planEnd) {
+                        // 實際完成日大於計畫完成日（延後完工）
                         isDelayed = true;
+                    } else if (!hasActualEnd && planEnd) {
+                        // 如果還沒填寫完成日（未完工），檢查計畫完成日是否小於今日
+                        const pEndDate = new Date(planEnd);
+                        if (!isNaN(pEndDate) && pEndDate < today) {
+                            isDelayed = true;
+                        }
                     }
                 }
 
-                // 判斷是否已完成：必須有實際結束日期，且未被判定落後（或延後完工）
                 let isCompleted = hasActualEnd && !isDelayed;
 
                 let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
@@ -355,13 +359,13 @@
 
                     if (isDelayed) {
                         actualBadgeClass = 'bg-rose-500 text-white';
-                        actualLabel = '實際 (落後)';
+                        actualLabel = hasActualEnd ? '實際 (落後/延後)' : '實際 (未完工/落後)';
                     } else if (isCompleted) {
                         actualBadgeClass = 'bg-purple-600 text-white';
                         actualLabel = '實際 (已完成)';
                     }
 
-                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (進行中/未定)`;
+                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
 
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
                         <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
