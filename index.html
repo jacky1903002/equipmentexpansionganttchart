@@ -243,7 +243,7 @@
                 if (data && data.sheets) {
                     appData = data;
                     appData.sheets.forEach(sheet => {
-                        if (!sheet.notes) sheet.notes = {}; // 初始化備註物件
+                        if (!sheet.notes) sheet.notes = {};
                         sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
                         sheet.rows.forEach(row => {
                             if (row.length > 4) {
@@ -588,11 +588,11 @@
                 matrixHtml += '</div></div>';
                 contentHtml += matrixHtml;
 
-                // 新增：每個機台甘特圖下方獨立的文字備註輸入框
                 const currentNote = sheet.notes[group.keyName] || '';
+                // 這裡特別加上 data-note-input 屬性，以便截圖時完美轉換與渲染排版
                 let noteHtml = `<div class="mt-2 pt-2 border-t border-gray-200">
                     <label class="block text-[11px] font-semibold text-gray-500 mb-1">📝 備註 / 說明文字：</label>
-                    <input type="text" value="${currentNote}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="點擊此處輸入該機台的備註或說明..." class="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="點擊此處輸入該機台的備註或說明..." class="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>`;
 
                 contentHtml += noteHtml + '</div>';
@@ -601,16 +601,62 @@
             });
         }
 
+        // 優化後的 PNG 截圖匯出功能：完美修復排版與輸入框擠在一起的問題
         function exportGanttPNG() {
             const element = document.getElementById('gantt-export-area');
             const exportBtn = document.getElementById('export-btn');
+            
+            // 隱藏按鈕避免被拍進去
             exportBtn.style.display = 'none';
-            html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
+
+            // 為了讓 html2canvas 完整且完美呈現 input 內的文字與寬度，
+            // 我們在截圖前將所有的 input 暫時替換成帶有相同排版的 div 區塊
+            const noteInputs = element.querySelectorAll('input[data-note-input="true"]');
+            const replacementMap = [];
+
+            noteInputs.forEach(input => {
+                const div = document.createElement('div');
+                div.className = input.className + " flex items-center bg-white overflow-hidden";
+                div.style.height = input.offsetHeight + "px";
+                div.style.minHeight = "28px";
+                div.style.lineHeight = "normal";
+                div.style.padding = "4px 12px";
+                div.style.boxSizing = "border-box";
+                div.innerText = input.value || input.placeholder;
+                if (!input.value) {
+                    div.style.color = "#9ca3af"; // placeholder 顏色
+                } else {
+                    div.style.color = "#1f2937";
+                }
+                input.style.display = 'none';
+                input.parentNode.insertBefore(div, input);
+                replacementMap.push({ input, div });
+            });
+
+            html2canvas(element, { 
+                scale: 2, 
+                useCORS: true,
+                logging: false,
+                windowWidth: element.scrollWidth
+            }).then(canvas => {
+                //還原原本的 input
+                replacementMap.forEach(item => {
+                    item.input.style.display = '';
+                    item.div.remove();
+                });
+
                 exportBtn.style.display = 'inline-block';
                 const link = document.createElement('a');
                 link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
+            }).catch(err => {
+                console.error(err);
+                replacementMap.forEach(item => {
+                    item.input.style.display = '';
+                    item.div.remove();
+                });
+                exportBtn.style.display = 'inline-block';
             });
         }
 
@@ -649,7 +695,7 @@
                             });
                         });
                         
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length].fill("")], notes: {} });
                     }
                 });
                 if (newSheets.length > 0) {
