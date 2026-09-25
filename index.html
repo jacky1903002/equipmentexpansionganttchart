@@ -466,7 +466,7 @@
             XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
-        // 強固型 Excel 匯入函式（完整相容您提供的多列排程與 V 標記格式）
+        // 全面強化的 Excel 匯入函式：保證完整讀取所有工作表與所有資料列
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -475,29 +475,57 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array', cellDates: false, raw: true });
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellText: false });
                     
                     const newSheets = [];
                     workbook.SheetNames.forEach(sheetName => {
                         const worksheet = workbook.Sheets[sheetName];
+                        
+                        // 轉換為二維陣列（header: 1 代表以陣列回傳每一列，不會遺漏任何欄位）
                         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
                         
                         if (json && json.length > 0) {
-                            // 清理標頭欄位
-                            const columns = json[0].map(cell => (cell !== undefined && cell !== null) ? String(cell).trim() : "");
+                            // 尋找第一列作為標頭
+                            let headerRowIdx = 0;
+                            while (headerRowIdx < json.length && (!json[headerRowIdx] || json[headerRowIdx].every(cell => cell === ""))) {
+                                headerRowIdx++;
+                            }
                             
-                            // 清理資料列，並過濾掉完全空白的行
-                            const rows = json.slice(1)
-                                .map(row => columns.map((_, colIdx) => {
-                                    const val = row[colIdx];
-                                    return (val !== undefined && val !== null) ? String(val).trim() : "";
-                                }))
-                                .filter(row => row.some(cell => cell !== ""));
+                            if (headerRowIdx >= json.length) return; // 略過空白工作表
+
+                            const rawColumns = json[headerRowIdx];
+                            const columns = rawColumns.map(cell => (cell !== undefined && cell !== null) ? String(cell).trim() : "");
+                            
+                            const maxCols = columns.length;
+                            const rows = [];
+
+                            // 從標頭的下一列開始讀取所有資料，確保不會因為某個儲存格空白而中斷
+                            for (let i = headerRowIdx + 1; i < json.length; i++) {
+                                const row = json[i];
+                                if (!row) continue;
+
+                                let hasData = false;
+                                const rowData = [];
+                                for (let c = 0; c < maxCols; c++) {
+                                    let val = row[c];
+                                    if (val instanceof Date) {
+                                        val = val.toISOString().split('T')[0].replace(/-/g, '/');
+                                    }
+                                    const strVal = (val !== undefined && val !== null) ? String(val).trim() : "";
+                                    if (strVal !== "") hasData = true;
+                                    rowData.push(strVal);
+                                }
+
+                                // 只有當整列完全沒有資料時才略過，避免中間有空白儲存格導致資料列漏掉
+                                if (hasData) {
+                                    rows.push(rowData);
+                                }
+                            }
 
                             newSheets.push({
                                 name: sheetName,
                                 columns: columns,
-                                rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")]
+                                rows: rows.length > 0 ? rows : [new Array(maxCols).fill("")]
                             });
                         }
                     });
@@ -507,7 +535,7 @@
                         currentSheetIndex = 0;
                         saveDataToFirebase();
                         renderApp();
-                        alert("Excel 匯入成功！");
+                        alert("Excel 檔案匯入成功！所有機台排程已載入。");
                     } else {
                         alert("Excel 檔案內容為空或格式無法辨識。");
                     }
@@ -515,7 +543,7 @@
                     console.error("解析 Excel 發生錯誤:", err);
                     alert("解析 Excel 失敗，請確認檔案格式是否正確。");
                 } finally {
-                    event.target.value = ''; // 重置檔案選取器
+                    event.target.value = '';
                 }
             };
             reader.onerror = function(err) {
