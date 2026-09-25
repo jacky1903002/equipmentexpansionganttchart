@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>機台擴張甘特圖管理系統 - 雲端即時版</title>
+    <title>機台擴張甘特圖管理系統 - 專業登入版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS -->
@@ -11,26 +11,55 @@
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- Firebase SDK (Compat 版本) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans antialiased">
+<body class="bg-gray-100 min-h-screen font-sans antialiased relative">
 
+    <!-- 登入覆蓋遮罩 (預設顯示) -->
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-6">
+            <div class="text-center space-y-2">
+                <span class="text-4xl">🔐</span>
+                <h2 class="text-xl font-bold text-gray-800">系統登入驗證</h2>
+                <p class="text-xs text-gray-500">請輸入管理者帳號密碼以解鎖編輯與匯入功能</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">帳號 (Account)</label>
+                    <input type="text" id="login-user" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="請輸入帳號">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">密碼 (Password)</label>
+                    <input type="password" id="login-pass" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="請輸入密碼">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition shadow-md">登入系統</button>
+                <div id="login-error" class="text-xs text-rose-500 text-center font-medium hidden">帳號或密碼錯誤，請重新輸入！</div>
+            </div>
+            <div class="text-center">
+                <button onclick="enterAsGuest()" class="text-xs text-gray-500 hover:text-gray-700 underline">以訪客模式檢視（僅能查看甘特圖與匯出）</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主應用程式介面 -->
     <div class="flex flex-col min-h-screen">
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">Realtime Database 雲端版</span>
+                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">安全權限版</span>
             </h1>
             <div class="flex items-center space-x-4">
-                <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 正在連線至雲端...</span>
+                <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 連線中...</span>
+                <span id="auth-status-badge" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-semibold">🔒 訪客模式 (唯讀)</span>
+                <button id="logout-btn" onclick="handleLogout()" class="hidden text-xs bg-rose-100 text-rose-700 px-3 py-1 rounded-full font-semibold hover:bg-rose-200 transition">登出</button>
             </div>
         </header>
 
         <!-- 分頁與工作表操作 -->
         <div class="bg-white border-b px-6 py-3 flex flex-wrap items-center justify-between gap-4">
             <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1"></div>
-            <div class="flex items-center space-x-2">
+            <div id="admin-sheet-controls" class="flex items-center space-x-2 opacity-50 pointer-events-none">
                 <button onclick="addNewSheet()" class="bg-emerald-600 text-white px-3.5 py-1.5 rounded-lg text-sm hover:bg-emerald-700 transition shadow-sm">+ 新增工作表</button>
                 <button onclick="deleteCurrentSheet()" class="bg-rose-500 text-white px-3.5 py-1.5 rounded-lg text-sm hover:bg-rose-600 transition shadow-sm">刪除工作表</button>
             </div>
@@ -39,8 +68,8 @@
         <!-- 檔案與截圖匯出列 -->
         <div class="bg-gray-50 px-6 py-3 border-b flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <label class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition shadow-sm flex items-center gap-1.5 font-medium">
-                    📁 匯入 Excel <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls, .csv" onchange="importExcel(event)">
+                <label id="import-file-label" class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-1.5 font-medium select-none">
+                    📁 匯入 Excel <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls, .csv" disabled onchange="importExcel(event)">
                 </label>
                 <button onclick="exportExcel()" class="bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-800 transition shadow-sm font-medium">📥 匯出 Excel</button>
             </div>
@@ -48,19 +77,17 @@
 
         <!-- 主內容區 -->
         <main class="flex-1 p-6 space-y-6 bg-gray-100">
-            <!-- 資料表格編輯區 -->
-            <div class="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto">
+            <!-- 資料表格編輯區 (訪客模式下禁用) -->
+            <div id="table-container-wrapper" class="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto opacity-65 pointer-events-none transition">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="current-sheet-title" class="text-base font-bold text-gray-800">工作表名稱</h3>
-                    <div class="space-x-2">
+                    <div id="table-action-btns" class="space-x-2">
                         <button onclick="addColumn()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition">+ 新增欄位</button>
                         <button onclick="addRow()" class="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition">+ 新增列位</button>
                     </div>
                 </div>
                 <div class="max-h-96 overflow-y-auto border rounded-lg">
-                    <table id="data-table" class="min-w-full divide-y divide-gray-200 text-xs">
-                        <!-- 動態渲染表格 -->
-                    </table>
+                    <table id="data-table" class="min-w-full divide-y divide-gray-200 text-xs"></table>
                 </div>
             </div>
 
@@ -78,17 +105,15 @@
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
                 </div>
-                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2">
-                    <!-- 動態渲染甘特圖 -->
-                </div>
+                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2"></div>
             </div>
         </main>
     </div>
 
-    <!-- 雲端與應用程式邏輯 (Realtime Database 版本) -->
+    <!-- 邏輯腳本 -->
     <script>
         // ==========================================
-        // 請在此處填入您從 Firebase 專案設定拿到的設定值
+        // 1. 設定您的 Firebase 與管理者帳密
         // ==========================================
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
@@ -100,70 +125,110 @@
             appId: "YOUR_APP_ID"
         };
 
-        // 初始化 Firebase
+        // 在此設定您的管理員帳號與密碼
+        const ADMIN_USER = "admin";
+        const ADMIN_PASS = "123456";
+
         firebase.initializeApp(firebaseConfig);
         const rtdb = firebase.database();
 
-        let defaultAppData = {
-            sheets: [
-                {
-                    name: "機台擴張排程",
-                    columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
-                    rows: [
-                        ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/1/1", "2026/8/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
-                        ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/3/1", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
-                    ]
-                }
-            ]
-        };
-
-        let appData = JSON.parse(JSON.stringify(defaultAppData));
+        let appData = { sheets: [] };
         let currentSheetIndex = 0;
+        let isLoggedIn = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             loadFromCloud();
         });
 
-        // 從 Realtime Database 載入資料
+        // 登入驗證邏輯
+        function handleLogin() {
+            const u = document.getElementById('login-user').value.trim();
+            const p = document.getElementById('login-pass').value.trim();
+            const errEl = document.getElementById('login-error');
+
+            if (u === ADMIN_USER && p === ADMIN_PASS) {
+                isLoggedIn = true;
+                document.getElementById('login-modal').classList.add('hidden');
+                updateUIPermissions();
+            } else {
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function enterAsGuest() {
+            isLoggedIn = false;
+            document.getElementById('login-modal').classList.add('hidden');
+            updateUIPermissions();
+        }
+
+        function handleLogout() {
+            isLoggedIn = false;
+            document.getElementById('login-user').value = "";
+            document.getElementById('login-pass').value = "";
+            document.getElementById('login-error').classList.add('hidden');
+            document.getElementById('login-modal').classList.remove('hidden');
+            updateUIPermissions();
+        }
+
+        // 依據登入狀態解鎖或鎖定介面
+        function updateUIPermissions() {
+            const badge = document.getElementById('auth-status-badge');
+            const logoutBtn = document.getElementById('logout-btn');
+            const adminSheetControls = document.getElementById('admin-sheet-controls');
+            const importLabel = document.getElementById('import-file-label');
+            const fileInput = document.getElementById('excel-file-input');
+            const tableWrapper = document.getElementById('table-container-wrapper');
+
+            if (isLoggedIn) {
+                badge.className = "text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-semibold";
+                badge.innerText = "🔓 管理者模式 (已解鎖)";
+                logoutBtn.classList.remove('hidden');
+                
+                adminSheetControls.classList.remove('opacity-50', 'pointer-events-none');
+                importLabel.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition shadow-sm flex items-center gap-1.5 font-medium";
+                fileInput.disabled = false;
+                tableWrapper.classList.remove('opacity-65', 'pointer-events-none');
+            } else {
+                badge.className = "text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-semibold";
+                badge.innerText = "🔒 訪客模式 (唯讀)";
+                logoutBtn.classList.add('hidden');
+
+                adminSheetControls.classList.add('opacity-50', 'pointer-events-none');
+                importLabel.className = "bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-1.5 font-medium select-none";
+                fileInput.disabled = true;
+                tableWrapper.classList.add('opacity-65', 'pointer-events-none');
+            }
+        }
+
+        // 資料同步與渲染
         function loadFromCloud() {
             const statusEl = document.getElementById('sync-status');
-            const dbRef = rtdb.ref('ganttSystem/mainData');
-            
-            dbRef.on('value', (snapshot) => {
+            rtdb.ref('ganttSystem/mainData').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data && data.sheets) {
                     appData = data;
                     statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
-                    statusEl.innerText = "✅ 已連線 Realtime DB (即時同步中)";
+                    statusEl.innerText = "✅ 已連線 Realtime DB";
                 } else {
-                    // 若雲端無資料，寫入預設資料
+                    appData = {
+                        sheets: [{
+                            name: "機台擴張排程",
+                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
+                            rows: [
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/1/1", "2026/8/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/3/1", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
+                            ]
+                        }]
+                    };
                     saveToCloud();
                 }
-                renderApp();
-            }, (error) => {
-                console.error("載入雲端資料失敗:", error);
-                statusEl.className = "text-xs bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full font-medium";
-                statusEl.innerText = "❌ 雲端連線失敗";
                 renderApp();
             });
         }
 
-        // 儲存資料到 Realtime Database
         function saveToCloud() {
-            const statusEl = document.getElementById('sync-status');
-            statusEl.className = "text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium";
-            statusEl.innerText = "💾 正在同步...";
-
-            rtdb.ref('ganttSystem/mainData').set(appData)
-                .then(() => {
-                    statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
-                    statusEl.innerText = "✅ 已連線 Realtime DB (即時同步中)";
-                })
-                .catch((error) => {
-                    console.error("儲存至雲端失敗:", error);
-                    statusEl.className = "text-xs bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full font-medium";
-                    statusEl.innerText = "❌ 雲端儲存失敗";
-                });
+            if (!isLoggedIn) return; // 訪客無法修改
+            rtdb.ref('ganttSystem/mainData').set(appData);
         }
 
         function renderApp() {
@@ -180,20 +245,23 @@
                 btn.className = `px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm ${idx === currentSheetIndex ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
                 btn.innerText = sheet.name;
                 btn.onclick = () => { currentSheetIndex = idx; renderApp(); };
-                btn.ondblclick = () => {
-                    const newName = prompt("重新命名工作表：", sheet.name);
-                    if (newName && newName.trim() !== "") {
-                        sheet.name = newName.trim();
-                        saveToCloud();
-                        renderApp();
-                    }
-                };
+                if (isLoggedIn) {
+                    btn.ondblclick = () => {
+                        const newName = prompt("重新命名工作表：", sheet.name);
+                        if (newName && newName.trim() !== "") {
+                            sheet.name = newName.trim();
+                            saveToCloud();
+                            renderApp();
+                        }
+                    };
+                }
                 container.appendChild(btn);
             });
             document.getElementById('current-sheet-title').innerText = appData.sheets[currentSheetIndex].name;
         }
 
         function addNewSheet() {
+            if (!isLoggedIn) return;
             const name = prompt("請輸入新工作表名稱：", `工作表 ${appData.sheets.length + 1}`);
             if (!name) return;
             appData.sheets.push({
@@ -207,6 +275,7 @@
         }
 
         function deleteCurrentSheet() {
+            if (!isLoggedIn) return;
             if (appData.sheets.length <= 1) {
                 alert("至少需要保留一個工作表！");
                 return;
@@ -227,12 +296,13 @@
             sheet.columns.forEach((col, cIdx) => {
                 html += `<th class="px-3 py-2 text-left font-medium text-gray-600 uppercase tracking-wider border-b">
                     <div class="flex items-center space-x-1">
-                        <input type="text" value="${col}" onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-24 text-xs font-semibold">
-                        <button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1">✕</button>
+                        <input type="text" value="${col}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-24 text-xs font-semibold">
+                        ${isLoggedIn ? `<button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1">✕</button>` : ''}
                     </div>
                 </th>`;
             });
-            html += '<th class="px-3 py-2 text-center font-medium text-gray-600 uppercase tracking-wider border-b">操作</th></tr></thead>';
+            if (isLoggedIn) html += '<th class="px-3 py-2 text-center font-medium text-gray-600 uppercase tracking-wider border-b">操作</th>';
+            html += '</tr></thead>';
             
             html += '<tbody class="bg-white divide-y divide-gray-200">';
             sheet.rows.forEach((row, rIdx) => {
@@ -240,12 +310,14 @@
                 sheet.columns.forEach((_, cIdx) => {
                     const val = row[cIdx] !== undefined ? row[cIdx] : '';
                     html += `<td class="px-3 py-1.5 whitespace-nowrap border-b">
-                        <input type="text" value="${val}" oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded text-xs text-gray-800">
+                        <input type="text" value="${val}" ${!isLoggedIn ? 'disabled' : ''} oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded text-xs text-gray-800">
                     </td>`;
                 });
-                html += `<td class="px-3 py-1.5 whitespace-nowrap text-center border-b">
-                    <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-semibold">刪除</button>
-                </td>`;
+                if (isLoggedIn) {
+                    html += `<td class="px-3 py-1.5 whitespace-nowrap text-center border-b">
+                        <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-semibold">刪除</button>
+                    </td>`;
+                }
                 html += '</tr>';
             });
             html += '</tbody>';
@@ -253,6 +325,7 @@
         }
 
         function updateColumnName(cIdx, val) {
+            if (!isLoggedIn) return;
             appData.sheets[currentSheetIndex].columns[cIdx] = val.trim();
             saveToCloud();
             renderApp();
@@ -264,12 +337,14 @@
         }
 
         function updateCell(rIdx, cIdx, val) {
+            if (!isLoggedIn) return;
             appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
             saveToCloud();
             renderGanttChart();
         }
 
         function addColumn() {
+            if (!isLoggedIn) return;
             const colName = prompt("請輸入新欄位名稱：", `欄位 ${appData.sheets[currentSheetIndex].columns.length + 1}`);
             if (!colName) return;
             appData.sheets[currentSheetIndex].columns.push(colName.trim());
@@ -279,6 +354,7 @@
         }
 
         function deleteColumn(cIdx) {
+            if (!isLoggedIn) return;
             if (appData.sheets[currentSheetIndex].columns.length <= 1) {
                 alert("至少需要保留一個欄位！");
                 return;
@@ -290,6 +366,7 @@
         }
 
         function addRow() {
+            if (!isLoggedIn) return;
             const emptyRow = new Array(appData.sheets[currentSheetIndex].columns.length).fill("");
             appData.sheets[currentSheetIndex].rows.push(emptyRow);
             saveToCloud();
@@ -297,18 +374,19 @@
         }
 
         function deleteRow(rIdx) {
+            if (!isLoggedIn) return;
             appData.sheets[currentSheetIndex].rows.splice(rIdx, 1);
             saveToCloud();
             renderApp();
         }
 
+        // 甘特圖渲染與日期判定維持不變
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            const today = new Date('2026-09-25'); // 固定當前基準日
-
+            const today = new Date('2026-09-25');
             const monthCols = [];
             const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             
@@ -328,7 +406,6 @@
                     }
                     isMonthCol = true;
                 }
-
                 if (isMonthCol) {
                     monthCols.push({ name: displayName, originalName: cStr, index: idx });
                 }
@@ -340,7 +417,6 @@
                 const clazz = row[1] || '';
                 const machine = row[2] || '未命名機台';
                 const key = `${dept}_${clazz}_${machine}`;
-                
                 if (!machineMap[key]) {
                     machineMap[key] = { dept, clazz, machine, items: [] };
                 }
@@ -362,18 +438,14 @@
 
                 group.items.forEach(row => {
                     const type = String(row[3] || '');
-                    if (type.includes('計畫')) {
-                        planItem = row;
-                    } else if (type.includes('實際')) {
-                        actualItem = row;
-                    }
+                    if (type.includes('計畫')) planItem = row;
+                    else if (type.includes('實際')) actualItem = row;
                 });
 
                 let planStart = planItem ? String(planItem[4] || '') : '';
                 let planEnd = planItem ? String(planItem[5] || '') : '';
                 let actualStart = actualItem ? String(actualItem[4] || '') : '';
                 let actualEnd = actualItem ? String(actualItem[5] || '') : '';
-                
                 let hasActualEnd = actualEnd && actualEnd.trim() !== '';
                 
                 let isDelayed = false;
@@ -394,7 +466,6 @@
                 }
 
                 let isCompleted = hasActualEnd && !isDelayed;
-
                 let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
 
                 if (planItem) {
@@ -407,7 +478,6 @@
                 if (actualItem) {
                     let actualBadgeClass = 'bg-emerald-500 text-white';
                     let actualLabel = '實際';
-
                     if (isDelayed) {
                         actualBadgeClass = 'bg-rose-500 text-white';
                         actualLabel = hasActualEnd ? '實際 (落後/延後)' : '實際 (未完工/落後)';
@@ -415,9 +485,7 @@
                         actualBadgeClass = 'bg-purple-600 text-white';
                         actualLabel = '實際 (已完成)';
                     }
-
                     let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
-
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
                         <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
                         <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
@@ -435,36 +503,20 @@
                         const aActive = aVal !== '' && aVal !== '0';
                         let aCellBg = 'bg-gray-200';
                         if (aActive) {
-                            if (isDelayed) {
-                                aCellBg = 'bg-rose-500 text-white';
-                            } else if (isCompleted) {
-                                aCellBg = 'bg-purple-600 text-white';
-                            } else {
-                                aCellBg = 'bg-emerald-500 text-white';
-                            }
+                            if (isDelayed) aCellBg = 'bg-rose-500 text-white';
+                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white';
+                            else aCellBg = 'bg-emerald-500 text-white';
                         }
-
-                        const pText = pActive ? (pVal.toUpperCase() === 'V' ? 'V' : (pVal === '1' ? 'V' : pVal)) : '';
-                        const aText = aActive ? (aVal.toUpperCase() === 'V' ? 'V' : (aVal === '1' ? 'V' : aVal)) : '';
 
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
                             <span class="text-[11px] text-gray-600 font-bold">${m.name}</span>
-                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm" title="計畫">
-                                ${pText}
-                            </div>
-                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm" title="實際">
-                                ${aText}
-                            </div>
+                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm">${pActive ? 'V' : ''}</div>
+                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm">${aActive ? 'V' : ''}</div>
                         </div>`;
                     });
-                } else {
-                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
                 }
                 matrixHtml += '</div></div>';
-
-                contentHtml += matrixHtml;
-                contentHtml += '</div>';
-
+                contentHtml += matrixHtml + '</div>';
                 div.innerHTML = headerInfo + contentHtml;
                 container.appendChild(div);
             });
@@ -473,19 +525,13 @@
         function exportGanttPNG() {
             const element = document.getElementById('gantt-export-area');
             const exportBtn = document.getElementById('export-btn');
-            
             exportBtn.style.display = 'none';
-
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
                 exportBtn.style.display = 'inline-block';
-
                 const link = document.createElement('a');
                 link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-            }).catch(err => {
-                exportBtn.style.display = 'inline-block';
-                console.error("匯出圖片失敗", err);
             });
         }
 
@@ -500,92 +546,30 @@
         }
 
         function importExcel(event) {
+            if (!isLoggedIn) return;
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const data = e.target.result;
-                    const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
-                    
-                    const newSheets = [];
-                    workbook.SheetNames.forEach(sheetName => {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-                        
-                        if (json && json.length > 0) {
-                            let headerRowIdx = 0;
-                            while (headerRowIdx < json.length && (!json[headerRowIdx] || json[headerRowIdx].every(cell => cell === ""))) {
-                                headerRowIdx++;
-                            }
-                            
-                            if (headerRowIdx >= json.length) return;
-
-                            const rawColumns = json[headerRowIdx];
-                            const columns = rawColumns.map(cell => {
-                                if (cell === undefined || cell === null) return "";
-                                if (cell instanceof Date) {
-                                    const y = cell.getFullYear();
-                                    const m = String(cell.getMonth() + 1).padStart(2, '0');
-                                    const d = String(cell.getDate()).padStart(2, '0');
-                                    return `${y}-${m}-${d}`;
-                                }
-                                return String(cell).trim();
-                            }).filter(c => c !== "");
-                            
-                            const maxCols = columns.length;
-                            const rows = [];
-
-                            for (let i = headerRowIdx + 1; i < json.length; i++) {
-                                const row = json[i];
-                                if (!row) continue;
-
-                                let hasData = false;
-                                const rowData = [];
-                                for (let c = 0; c < maxCols; c++) {
-                                    let val = row[c];
-                                    if (val instanceof Date) {
-                                        val = val.getFullYear() + '/' + (val.getMonth() + 1) + '/' + val.getDate();
-                                    }
-                                    const strVal = (val !== undefined && val !== null) ? String(val).trim() : "";
-                                    if (strVal !== "") hasData = true;
-                                    rowData.push(strVal);
-                                }
-
-                                if (hasData) {
-                                    rows.push(rowData);
-                                }
-                            }
-
-                            newSheets.push({
-                                name: sheetName,
-                                columns: columns,
-                                rows: rows.length > 0 ? rows : [new Array(maxCols).fill("")]
-                            });
-                        }
-                    });
-
-                    if (newSheets.length > 0) {
-                        appData.sheets = newSheets;
-                        currentSheetIndex = 0;
-                        saveToCloud();
-                        renderApp();
-                        alert("🎉 Excel 檔案匯入並同步至雲端成功！");
-                    } else {
-                        alert("⚠️ Excel 檔案內容為空或格式無法辨識。");
+                const workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+                const newSheets = [];
+                workbook.SheetNames.forEach(sheetName => {
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" });
+                    if (json && json.length > 0) {
+                        let hIdx = json.findIndex(row => row.some(cell => cell !== ""));
+                        if (hIdx === -1) return;
+                        const columns = json[hIdx].map(c => String(c).trim()).filter(c => c !== "");
+                        const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => columns.map((_, i) => row[i] !== undefined ? String(row[i]) : ""));
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")] });
                     }
-                } catch (err) {
-                    console.error("解析 Excel 發生錯誤:", err);
-                    alert("❌ 解析 Excel 失敗，請確認檔案格式是否正確。");
-                } finally {
-                    event.target.value = '';
+                });
+                if (newSheets.length > 0) {
+                    appData.sheets = newSheets;
+                    currentSheetIndex = 0;
+                    saveToCloud();
+                    renderApp();
+                    alert("🎉 匯入 Excel 並同步至雲端成功！");
                 }
-            };
-            reader.onerror = function(err) {
-                console.error("讀取檔案失敗:", err);
-                alert("❌ 讀取檔案失敗！");
-                event.target.value = '';
             };
             reader.readAsBinaryString(file);
         }
