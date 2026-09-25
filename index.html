@@ -126,10 +126,10 @@
             sheets: [
                 {
                     name: "機台擴張排程",
-                    columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
+                    columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
                     rows: [
-                        ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "5月1日", "12月31日", "1", "1", "1", "1", "1", "1", "1", "1"],
-                        ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "6月1日", "", "", "1", "", "", "", "", "", ""]
+                        ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/1/1", "2026/8/15", "V", "V", "V", "V", "V", "V", "V", "V", "", "", "", ""],
+                        ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/3/1", "", "", "", "V", "V", "V", "V", "V", "V", "", "", "", ""]
                     ]
                 }
             ]
@@ -210,8 +210,8 @@
             if (!name) return;
             appData.sheets.push({
                 name: name,
-                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "May-26", "Jun-26"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026-05-01", "2026-06-01", "1", "1"]]
+                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26"],
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "V", "V"]]
             });
             currentSheetIndex = appData.sheets.length - 1;
             saveDataToFirebase();
@@ -403,12 +403,12 @@
                 let matrixHtml = '<div class="pt-2"><div class="flex space-x-1 overflow-x-auto">';
                 if (monthCols.length > 0) {
                     monthCols.forEach(m => {
-                        const pVal = planItem ? planItem[m.index] : '';
-                        const pActive = pVal && pVal !== '0' && pVal !== '';
+                        const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
+                        const pActive = pVal !== '' && pVal !== '0';
                         const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900' : 'bg-gray-200';
 
-                        const aVal = actualItem ? actualItem[m.index] : '';
-                        const aActive = aVal && aVal !== '0' && aVal !== '';
+                        const aVal = actualItem ? String(actualItem[m.index] || '').trim() : '';
+                        const aActive = aVal !== '' && aVal !== '0';
                         let aCellBg = 'bg-gray-200';
                         if (aActive) {
                             if (isCompleted) {
@@ -420,13 +420,17 @@
                             }
                         }
 
+                        // 顯示打勾符號（若輸入的是 V 或其他字元則原樣或顯示打勾）
+                        const pText = pActive ? (pVal.toUpperCase() === 'V' ? 'V' : '✓') : '';
+                        const aText = aActive ? (aVal.toUpperCase() === 'V' ? 'V' : '✓') : '';
+
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px] gap-1">
                             <span class="text-[10px] text-gray-500 font-medium">${m.name}</span>
                             <div class="w-full h-5 rounded ${pCellBg} flex items-center justify-center text-[10px] font-bold" title="計畫">
-                                ${pActive ? '✓' : ''}
+                                ${pText}
                             </div>
                             <div class="w-full h-5 rounded ${aCellBg} flex items-center justify-center text-[10px] font-bold" title="實際">
-                                ${aActive ? '✓' : ''}
+                                ${aText}
                             </div>
                         </div>`;
                     });
@@ -478,8 +482,8 @@
                         const worksheet = workbook.Sheets[sheetName];
                         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                         if (json.length > 0) {
-                            const columns = json[0].map(String);
-                            const rows = json.slice(1).map(row => row.map(cell => cell !== undefined ? String(cell) : ""));
+                            const columns = json[0].map(cell => cell !== undefined ? String(cell).trim() : "");
+                            const rows = json.slice(1).map(row => row.map(cell => cell !== undefined ? String(cell).trim() : ""));
                             appData.sheets.push({ name: sheetName, columns, rows: rows.length ? rows : [new Array(columns.length).fill("")] });
                         }
                     });
@@ -491,7 +495,7 @@
                     console.error("解析 Excel 失敗:", err);
                     alert("解析 Excel 失敗，請確認檔案格式是否正確。");
                 } finally {
-                    event.target.value = ''; // 重置 input 確保可重複匯入同一個檔案
+                    event.target.value = '';
                 }
             };
             reader.onerror = function(err) {
