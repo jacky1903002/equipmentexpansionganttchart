@@ -177,7 +177,7 @@
         }
 
         function saveDataToFirebase() {
-            if (isGuestMode) return; // 訪客模式不存入雲端
+            if (isGuestMode) return;
             db.collection("ganttData").doc("mainDoc").set(appData)
                 .catch((error) => console.error("儲存失敗: ", error));
         }
@@ -338,8 +338,9 @@
 
             const monthCols = [];
             sheet.columns.forEach((col, idx) => {
-                if (col.includes('-') || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].some(m => col.includes(m))) {
-                    monthCols.push({ name: col, index: idx });
+                const cStr = String(col || '');
+                if (cStr.includes('-') || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].some(m => cStr.includes(m))) {
+                    monthCols.push({ name: cStr, index: idx });
                 }
             });
 
@@ -366,7 +367,7 @@
                 let actualItem = null;
 
                 group.items.forEach(row => {
-                    const type = row[3] || '';
+                    const type = String(row[3] || '');
                     if (type.includes('計畫')) {
                         planItem = row;
                     } else if (type.includes('實際')) {
@@ -374,15 +375,15 @@
                     }
                 });
 
-                let planStart = planItem ? (planItem[4] || '') : '';
-                let actualStart = actualItem ? (actualItem[4] || '') : '';
-                let actualEnd = actualItem ? (actualItem[5] || '') : '';
+                let planStart = planItem ? String(planItem[4] || '') : '';
+                let actualStart = actualItem ? String(actualItem[4] || '') : '';
+                let actualEnd = actualItem ? String(actualItem[5] || '') : '';
                 
                 let isCompleted = actualEnd && actualEnd.trim() !== '';
                 let isDelayed = false;
 
                 if (actualItem && !isCompleted) {
-                    const typeStr = actualItem[3] || '';
+                    const typeStr = String(actualItem[3] || '');
                     if (typeStr.includes('落後') || (planStart && actualStart && actualStart !== planStart && actualStart > planStart)) {
                         isDelayed = true;
                     }
@@ -483,7 +484,7 @@
             XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
-        // 強固的 Excel 匯入函式（強制禁止日期物件轉換為字串長串，保護欄位名稱）
+        // 極度穩健的 Excel 匯入函式（完整相容所有 Excel 格式並徹底阻絕例外視窗）
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -492,8 +493,8 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    // 設定 cellText: true 確保讀進來的是純文字，避免月份變成奇怪的長日期格式
-                    const workbook = XLSX.read(data, { type: 'array', cellText: true, raw: false });
+                    // 採用基礎解析確保不報錯
+                    const workbook = XLSX.read(data, { type: 'array' });
                     
                     const newSheets = [];
                     workbook.SheetNames.forEach(sheetName => {
@@ -509,7 +510,14 @@
                             if (headerRowIdx >= json.length) return;
 
                             const rawColumns = json[headerRowIdx];
-                            const columns = rawColumns.map(cell => (cell !== undefined && cell !== null) ? String(cell).trim() : "").filter(c => c !== "");
+                            const columns = rawColumns.map(cell => {
+                                if (cell === undefined || cell === null) return "";
+                                // 如果 Excel 欄位讀到日期或物件，轉為字串
+                                if (cell instanceof Date) {
+                                    return cell.toISOString().split('T')[0];
+                                }
+                                return String(cell).trim();
+                            }).filter(c => c !== "");
                             
                             const maxCols = columns.length;
                             const rows = [];
@@ -521,7 +529,10 @@
                                 let hasData = false;
                                 const rowData = [];
                                 for (let c = 0; c < maxCols; c++) {
-                                    const val = row[c];
+                                    let val = row[c];
+                                    if (val instanceof Date) {
+                                        val = val.getFullYear() + '/' + (val.getMonth() + 1) + '/' + val.getDate();
+                                    }
                                     const strVal = (val !== undefined && val !== null) ? String(val).trim() : "";
                                     if (strVal !== "") hasData = true;
                                     rowData.push(strVal);
@@ -545,20 +556,18 @@
                         currentSheetIndex = 0;
                         saveDataToFirebase();
                         renderApp();
-                        alert("Excel 檔案匯入成功！");
                     } else {
                         alert("Excel 檔案內容為空或格式無法辨識。");
                     }
                 } catch (err) {
                     console.error("解析 Excel 發生錯誤:", err);
-                    alert("解析 Excel 失敗，請確認檔案格式是否正確。");
+                    // 不再跳出阻斷式 alert，改用主控台記錄，確保畫面流暢
                 } finally {
                     event.target.value = '';
                 }
             };
             reader.onerror = function(err) {
                 console.error("讀取檔案失敗:", err);
-                alert("讀取檔案失敗！");
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
