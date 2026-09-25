@@ -10,14 +10,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- html2canvas (匯出 PNG) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Firebase SDK (Compat 模式方便單檔案使用) -->
+    <!-- Firebase SDK (Compat 模式) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
-    <!-- 登入畫面 (未登入時顯示) -->
+    <!-- 登入畫面 -->
     <div id="login-screen" class="flex items-center justify-center min-h-screen bg-gray-900">
         <div class="bg-white p-8 rounded-2xl shadow-xl w-96">
             <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">系統登入</h2>
@@ -34,9 +34,8 @@
         </div>
     </div>
 
-    <!-- 主應用程式介面 (登入後顯示) -->
+    <!-- 主應用程式介面 -->
     <div id="app-screen" class="hidden flex flex-col min-h-screen">
-        <!-- 頂部導覽列 -->
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800">📊 機台擴張甘特圖管理系統</h1>
             <div class="flex items-center space-x-4">
@@ -45,12 +44,9 @@
             </div>
         </header>
 
-        <!-- 工具列與工作表分頁 -->
+        <!-- 分頁與工作表操作 -->
         <div class="bg-white border-b px-6 py-3 flex flex-wrap items-center justify-between gap-4">
-            <!-- 分頁清單 -->
-            <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1">
-                <!-- 動態產生工作表分頁 -->
-            </div>
+            <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1"></div>
             <div class="flex items-center space-x-2">
                 <button onclick="addNewSheet()" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700">+ 新增工作表</button>
                 <button onclick="renameCurrentSheet()" class="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-yellow-600">重新命名</button>
@@ -58,7 +54,7 @@
             </div>
         </div>
 
-        <!-- 功能動作列 (Excel & 匯出 PNG) -->
+        <!-- 檔案與截圖匯出列 -->
         <div class="bg-gray-50 px-6 py-3 border-b flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <label class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition">
@@ -69,7 +65,7 @@
             <button onclick="exportPNG()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">🖼️ 匯出 PNG 圖片</button>
         </div>
 
-        <!-- 主內容區 (表格與甘特圖預覽) -->
+        <!-- 主內容區 -->
         <main id="export-area" class="flex-1 p-6 space-y-6 bg-gray-100">
             <!-- 資料表格編輯區 -->
             <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
@@ -80,16 +76,16 @@
                         <button onclick="addRow()" class="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600">+ 新增列位</button>
                     </div>
                 </div>
-                <table id="data-table" class="min-w-full divide-y divide-gray-200 border">
+                <table id="data-table" class="min-w-full divide-y divide-gray-200 border text-xs">
                     <!-- 動態渲染表格 -->
                 </table>
             </div>
 
-            <!-- 甘特圖視覺化圖表區 -->
+            <!-- 甘特圖與月份矩陣視覺化區 -->
             <div class="bg-white rounded-xl shadow p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">📈 甘特圖預覽</h3>
-                <div id="gantt-container" class="space-y-3 overflow-x-auto py-2">
-                    <!-- 動態渲染甘特圖條 -->
+                <h3 class="text-lg font-bold text-gray-800 mb-4">📈 甘特圖與月份矩陣預覽</h3>
+                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2">
+                    <!-- 動態渲染甘特圖 -->
                 </div>
             </div>
         </main>
@@ -97,7 +93,6 @@
 
     <!-- JavaScript 邏輯 -->
     <script>
-        // 已代入您的專案 Firebase 設定
         const firebaseConfig = {
             apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
             authDomain: "equipmentexpansionganttchart.firebaseapp.com",
@@ -113,21 +108,21 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // 預設對應您的表格結構範例
         let appData = {
             sheets: [
                 {
-                    name: "擴張計畫 A",
-                    columns: ["機台名稱", "負責人", "開始日期", "結束日期", "進度(%)"],
+                    name: "機台擴張排程",
+                    columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
                     rows: [
-                        ["CNC-01", "張三", "2026-03-01", "2026-03-15", "80"],
-                        ["CNC-02", "李四", "2026-03-10", "2026-03-30", "40"]
+                        ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "5月1日", "12月31日", "1", "1", "1", "1", "1", "1", "1", "1"],
+                        ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "6月1日", "", "", "1", "", "", "", "", "", ""]
                     ]
                 }
             ]
         };
         let currentSheetIndex = 0;
 
-        // 監聽登入狀態
         auth.onAuthStateChanged((user) => {
             if (user) {
                 document.getElementById('login-screen').classList.add('hidden');
@@ -153,7 +148,6 @@
             auth.signOut();
         }
 
-        // Firebase 資料同步
         function saveDataToFirebase() {
             db.collection("ganttData").doc("mainDoc").set(appData)
                 .catch((error) => console.error("儲存失敗: ", error));
@@ -171,14 +165,12 @@
             });
         }
 
-        // 渲染主介面
         function renderApp() {
             renderSheetsTabs();
             renderTable();
             renderGanttChart();
         }
 
-        // 渲染分頁
         function renderSheetsTabs() {
             const container = document.getElementById('sheets-tabs');
             container.innerHTML = '';
@@ -192,14 +184,13 @@
             document.getElementById('current-sheet-title').innerText = appData.sheets[currentSheetIndex].name;
         }
 
-        // 工作表管理
         function addNewSheet() {
             const name = prompt("請輸入新工作表名稱：", `工作表 ${appData.sheets.length + 1}`);
             if (!name) return;
             appData.sheets.push({
                 name: name,
-                columns: ["項目名稱", "開始日期", "結束日期"],
-                rows: [["範例項目", "2026-03-01", "2026-03-10"]]
+                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "May-26", "Jun-26"],
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026-05-01", "2026-06-01", "1", "1"]]
             });
             currentSheetIndex = appData.sheets.length - 1;
             saveDataToFirebase();
@@ -228,33 +219,32 @@
             }
         }
 
-        // 渲染動態表格
         function renderTable() {
             const sheet = appData.sheets[currentSheetIndex];
             const table = document.getElementById('data-table');
             let html = '<thead class="bg-gray-50"><tr>';
             
             sheet.columns.forEach((col, cIdx) => {
-                html += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                html += `<th class="px-2 py-2 text-left font-medium text-gray-500 uppercase tracking-wider border-b">
                     <div class="flex items-center space-x-1">
-                        <input type="text" value="${col}" onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-24">
+                        <input type="text" value="${col}" onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-20">
                         <button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs">✕</button>
                     </div>
                 </th>`;
             });
-            html += '<th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">操作</th></tr></thead>';
+            html += '<th class="px-2 py-2 text-center font-medium text-gray-500 uppercase tracking-wider border-b">操作</th></tr></thead>';
             
             html += '<tbody class="bg-white divide-y divide-gray-200">';
             sheet.rows.forEach((row, rIdx) => {
                 html += '<tr>';
                 sheet.columns.forEach((_, cIdx) => {
                     const val = row[cIdx] !== undefined ? row[cIdx] : '';
-                    html += `<td class="px-4 py-2 whitespace-nowrap border-b">
+                    html += `<td class="px-2 py-1.5 whitespace-nowrap border-b">
                         <input type="text" value="${val}" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded">
                     </td>`;
                 });
-                html += `<td class="px-4 py-2 whitespace-nowrap text-center border-b">
-                    <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-sm">刪除列</button>
+                html += `<td class="px-2 py-1.5 whitespace-nowrap text-center border-b">
+                    <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-semibold">刪除</button>
                 </td>`;
                 html += '</tr>';
             });
@@ -307,31 +297,63 @@
             renderApp();
         }
 
-        // 甘特圖視覺化渲染
+        // 針對部門、課別、機台、計畫/實際與月份矩陣渲染甘特圖
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
+            // 尋找月份欄位（假設欄位名稱包含 -26 或為常見英文月份縮寫）
+            const monthCols = [];
+            sheet.columns.forEach((col, idx) => {
+                if (col.includes('-') || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].some(m => col.includes(m))) {
+                    monthCols.push({ name: col, index: idx });
+                }
+            });
+
             sheet.rows.forEach((row) => {
-                const taskName = row[0] || '未命名任務';
-                const start = row[2] || '';
-                const end = row[3] || '';
+                const dept = row[0] || '';
+                const clazz = row[1] || '';
+                const machine = row[2] || '';
+                const type = row[3] || '計畫';
+                const start = row[4] || '';
+                const end = row[5] || '';
 
                 const div = document.createElement('div');
-                div.className = 'flex items-center text-sm';
-                div.innerHTML = `
-                    <div class="w-32 truncate font-medium text-gray-700" title="${taskName}">${taskName}</div>
-                    <div class="flex-1 bg-gray-100 h-6 rounded-lg relative overflow-hidden flex items-center px-2">
-                        <span class="text-xs text-gray-500 z-10">${start} ~ ${end}</span>
-                        <div class="absolute left-0 top-0 bottom-0 bg-blue-500 opacity-30 rounded-lg" style="width: 60%;"></div>
-                    </div>
-                `;
+                div.className = 'border rounded-lg p-3 bg-gray-50 flex flex-col gap-2';
+                
+                let headerInfo = `<div class="text-xs font-bold text-gray-700">${dept} / ${clazz} / <span class="text-blue-600">${machine}</span></div>`;
+                
+                let typeColor = type === '計畫' ? 'bg-amber-400 text-white' : 'bg-emerald-500 text-white';
+                let barHtml = `<div class="flex items-center space-x-2">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${typeColor}">${type}</span>
+                    <span class="text-xs text-gray-500">${start} ~ ${end}</span>
+                </div>`;
+
+                // 渲染月份方格矩陣對照
+                let matrixHtml = '<div class="flex space-x-1 overflow-x-auto pt-1">';
+                if (monthCols.length > 0) {
+                    monthCols.forEach(m => {
+                        const val = row[m.index];
+                        const isActive = val && val !== '0' && val !== '';
+                        const cellBg = isActive ? (type === '計畫' ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-gray-200';
+                        matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px]">
+                            <span class="text-[10px] text-gray-500 mb-1">${m.name}</span>
+                            <div class="w-full h-6 rounded ${cellBg} flex items-center justify-center text-[10px] text-white font-bold">
+                                ${isActive ? '✓' : ''}
+                            </div>
+                        </div>`;
+                    });
+                } else {
+                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位，請在表頭加入如 May-26 等欄位）</span>';
+                }
+                matrixHtml += '</div>';
+
+                div.innerHTML = headerInfo + barHtml + matrixHtml;
                 container.appendChild(div);
             });
         }
 
-        // 匯出 PNG 圖片
         function exportPNG() {
             const element = document.getElementById('export-area');
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
@@ -342,9 +364,9 @@
             });
         }
 
-        // 匯出 Excel
         function exportExcel() {
             const wb = XLSX.utils.book_new();
+            appData.sheets.sheets.forEach(sheet => {}); // 佔位
             appData.sheets.forEach(sheet => {
                 const wsData = [sheet.columns, ...sheet.rows];
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -353,7 +375,6 @@
             XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
-        // 匯入 Excel
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
