@@ -97,14 +97,16 @@
 
     <!-- JavaScript 邏輯 -->
     <script>
-        // TODO: 請替換為您在 Firebase 專案設定中取得的正確參數
+        // 已代入您的專案 Firebase 設定
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
+            authDomain: "equipmentexpansionganttchart.firebaseapp.com",
+            databaseURL: "https://equipmentexpansionganttchart-default-rtdb.firebaseio.com",
+            projectId: "equipmentexpansionganttchart",
+            storageBucket: "equipmentexpansionganttchart.firebasestorage.app",
+            messagingSenderId: "357406784955",
+            appId: "1:357406784955:web:e3661233994a32196e589e",
+            measurementId: "G-HYXNC4YZ19"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -226,13 +228,12 @@
             }
         }
 
-        // 渲染動態表格 (所有欄位/列位皆可修改名稱與刪除/新增)
+        // 渲染動態表格
         function renderTable() {
             const sheet = appData.sheets[currentSheetIndex];
             const table = document.getElementById('data-table');
             let html = '<thead class="bg-gray-50"><tr>';
             
-            // 欄位標題列
             sheet.columns.forEach((col, cIdx) => {
                 html += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
                     <div class="flex items-center space-x-1">
@@ -243,7 +244,6 @@
             });
             html += '<th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">操作</th></tr></thead>';
             
-            // 資料列
             html += '<tbody class="bg-white divide-y divide-gray-200">';
             sheet.rows.forEach((row, rIdx) => {
                 html += '<tr>';
@@ -307,7 +307,7 @@
             renderApp();
         }
 
-        // 簡易甘特圖視覺化渲染
+        // 甘特圖視覺化渲染
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
