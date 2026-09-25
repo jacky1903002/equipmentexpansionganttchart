@@ -62,11 +62,12 @@
                 </label>
                 <button onclick="exportExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition">📥 匯出 Excel</button>
             </div>
-            <button onclick="exportPNG()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">🖼️ 匯出 PNG 圖片</button>
+            <!-- 修改：按鈕僅針對甘特圖區塊匯出 PNG -->
+            <button onclick="exportGanttPNG()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">🖼️ 匯出甘特圖 PNG</button>
         </div>
 
         <!-- 主內容區 -->
-        <main id="export-area" class="flex-1 p-6 space-y-6 bg-gray-100">
+        <main class="flex-1 p-6 space-y-6 bg-gray-100">
             <!-- 資料表格編輯區 -->
             <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
                 <div class="flex justify-between items-center mb-4">
@@ -81,9 +82,16 @@
                 </table>
             </div>
 
-            <!-- 甘特圖與月份矩陣視覺化區 -->
-            <div class="bg-white rounded-xl shadow p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">📈 甘特圖與月份矩陣預覽</h3>
+            <!-- 甘特圖與月份矩陣視覺化區 (專門用來匯出 PNG 的範圍) -->
+            <div id="gantt-export-area" class="bg-white rounded-xl shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
+                    <div class="flex items-center space-x-3 text-xs">
+                        <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫 (Baseline)</span>
+                        <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常/超前</span>
+                        <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
+                    </div>
+                </div>
                 <div id="gantt-container" class="space-y-4 overflow-x-auto py-2">
                     <!-- 動態渲染甘特圖 -->
                 </div>
@@ -108,7 +116,6 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // 預設對應您的表格結構範例
         let appData = {
             sheets: [
                 {
@@ -297,13 +304,12 @@
             renderApp();
         }
 
-        // 針對部門、課別、機台、計畫/實際與月份矩陣渲染甘特圖
+        // 甘特圖渲染：支援淺藍（計畫）、綠色（正常/超前）、紅/橘色（落後）
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            // 尋找月份欄位（假設欄位名稱包含 -26 或為常見英文月份縮寫）
             const monthCols = [];
             sheet.columns.forEach((col, idx) => {
                 if (col.includes('-') || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].some(m => col.includes(m))) {
@@ -324,22 +330,42 @@
                 
                 let headerInfo = `<div class="text-xs font-bold text-gray-700">${dept} / ${clazz} / <span class="text-blue-600">${machine}</span></div>`;
                 
-                let typeColor = type === '計畫' ? 'bg-amber-400 text-white' : 'bg-emerald-500 text-white';
+                // 顏色對應判定
+                let badgeClass = 'bg-sky-200 text-sky-800 border border-sky-400';
+                if (type.includes('實際')) {
+                    // 這裡可以根據您的判定（例如實際開工日晚於計畫或帶有落後字眼則顯示紅色/橘色，否則綠色）
+                    if (type.includes('落後')) {
+                        badgeClass = 'bg-rose-500 text-white';
+                    } else {
+                        badgeClass = 'bg-emerald-500 text-white';
+                    }
+                }
+
                 let barHtml = `<div class="flex items-center space-x-2">
-                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${typeColor}">${type}</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${type}</span>
                     <span class="text-xs text-gray-500">${start} ~ ${end}</span>
                 </div>`;
 
-                // 渲染月份方格矩陣對照
                 let matrixHtml = '<div class="flex space-x-1 overflow-x-auto pt-1">';
                 if (monthCols.length > 0) {
                     monthCols.forEach(m => {
                         const val = row[m.index];
                         const isActive = val && val !== '0' && val !== '';
-                        const cellBg = isActive ? (type === '計畫' ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-gray-200';
+                        
+                        let cellBg = 'bg-gray-200';
+                        if (isActive) {
+                            if (type === '計畫') {
+                                cellBg = 'bg-sky-200 border border-sky-400 text-sky-900'; // 淺藍色代表計畫基準線
+                            } else if (type.includes('落後')) {
+                                cellBg = 'bg-rose-500 text-white'; // 紅色/橘色代表落後
+                            } else {
+                                cellBg = 'bg-emerald-500 text-white'; // 綠色代表正常/超前
+                            }
+                        }
+
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px]">
                             <span class="text-[10px] text-gray-500 mb-1">${m.name}</span>
-                            <div class="w-full h-6 rounded ${cellBg} flex items-center justify-center text-[10px] text-white font-bold">
+                            <div class="w-full h-6 rounded ${cellBg} flex items-center justify-center text-[10px] font-bold">
                                 ${isActive ? '✓' : ''}
                             </div>
                         </div>`;
@@ -354,11 +380,12 @@
             });
         }
 
-        function exportPNG() {
-            const element = document.getElementById('export-area');
+        // 僅針對甘特圖區塊匯出 PNG 圖片
+        function exportGanttPNG() {
+            const element = document.getElementById('gantt-export-area');
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖.png`;
+                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
@@ -366,7 +393,6 @@
 
         function exportExcel() {
             const wb = XLSX.utils.book_new();
-            appData.sheets.sheets.forEach(sheet => {}); // 佔位
             appData.sheets.forEach(sheet => {
                 const wsData = [sheet.columns, ...sheet.rows];
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
