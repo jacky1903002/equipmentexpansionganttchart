@@ -3,24 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>機台擴張甘特圖管理系統 - 專業商業版</title>
+    <title>機台擴張甘特圖管理系統 - 雲端商業版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS (Excel 匯入匯出) -->
+    <!-- SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- html2canvas (匯出 PNG) -->
+    <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Firebase SDK (Compat 版本，最適合單一 HTML 快速導入) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans antialiased">
 
-    <!-- 主應用程式介面 (直接顯示，不需登入) -->
-    <div id="app-screen" class="flex flex-col min-h-screen">
+    <div class="flex flex-col min-h-screen">
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span>📊</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-normal">專業商業版</span>
+                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-normal">雲端同步版</span>
             </h1>
             <div class="flex items-center space-x-4">
-                <span id="user-info" class="text-sm text-gray-600 font-medium">使用者: 本地端模式 (今日: 2026-09-25)</span>
+                <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 正在連線至雲端...</span>
             </div>
         </header>
 
@@ -61,30 +64,58 @@
                 </div>
             </div>
 
-            <!-- 甘特圖與月份矩陣視覺化區 -->
+            <!-- 甘特圖預覽區 -->
             <div id="gantt-export-area" class="bg-white rounded-xl shadow-sm border p-6 relative">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
                     <h3 class="text-base font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
                     <div class="flex items-center space-x-4 flex-wrap gap-2">
                         <div class="flex items-center space-x-3 text-xs bg-gray-50 px-3 py-1.5 rounded-lg border">
-                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫 (Baseline)</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常/超前</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後 (含未完工逾期)</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成 (如期/提前)</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
                 </div>
-                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2">
-                    <!-- 動態渲染甘特圖 -->
-                </div>
+                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2"></div>
             </div>
         </main>
     </div>
 
-    <!-- JavaScript 邏輯 (純本地端儲存) -->
+    <!-- 雲端與應用程式邏輯 -->
     <script>
-        let defaultAppData = {
+        // ==========================================
+        // 請在此處填入您從 Firebase 拿到的設定值
+        // ==========================================
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
+  authDomain: "equipmentexpansionganttchart.firebaseapp.com",
+  databaseURL: "https://equipmentexpansionganttchart-default-rtdb.firebaseio.com",
+  projectId: "equipmentexpansionganttchart",
+  storageBucket: "equipmentexpansionganttchart.firebasestorage.app",
+  messagingSenderId: "357406784955",
+  appId: "1:357406784955:web:e3661233994a32196e589e",
+  measurementId: "G-HYXNC4YZ19"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let appData = {
             sheets: [
                 {
                     name: "機台擴張排程",
@@ -96,21 +127,50 @@
                 }
             ]
         };
-
-        let appData = loadFromLocalStorage() || JSON.parse(JSON.stringify(defaultAppData));
         let currentSheetIndex = 0;
+        let isSaving = false;
 
         window.addEventListener('DOMContentLoaded', () => {
-            renderApp();
+            loadFromCloud();
         });
 
-        function saveData() {
-            localStorage.setItem('gantt_local_data', JSON.stringify(appData));
+        // 從雲端 Firestore 載入資料
+        function loadFromCloud() {
+            const statusEl = document.getElementById('sync-status');
+            db.collection("ganttSystem").doc("mainData").get().then((doc) => {
+                if (doc.exists && doc.data().sheets) {
+                    appData = doc.data();
+                    statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
+                    statusEl.innerText = "✅ 已連線雲端 (同步完成)";
+                } else {
+                    // 若雲端沒有資料，寫入預設資料
+                    saveToCloud();
+                }
+                renderApp();
+            }).catch((error) => {
+                console.error("載入雲端資料失敗:", error);
+                statusEl.className = "text-xs bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full font-medium";
+                statusEl.innerText = "❌ 雲端連線失敗 (請檢查設定)";
+                renderApp(); // 降級使用預設
+            });
         }
 
-        function loadFromLocalStorage() {
-            const data = localStorage.getItem('gantt_local_data');
-            return data ? JSON.parse(data) : null;
+        // 儲存資料到雲端 Firestore
+        function saveToCloud() {
+            const statusEl = document.getElementById('sync-status');
+            statusEl.className = "text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium";
+            statusEl.innerText = "💾 正在同步至雲端...";
+
+            db.collection("ganttSystem").doc("mainData").set(appData)
+                .then(() => {
+                    statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
+                    statusEl.innerText = "✅ 已連線雲端 (同步完成)";
+                })
+                .catch((error) => {
+                    console.error("儲存至雲端失敗:", error);
+                    statusEl.className = "text-xs bg-rose-100 text-rose-800 px-2.5 py-1 rounded-full font-medium";
+                    statusEl.innerText = "❌ 雲端儲存失敗";
+                });
         }
 
         function renderApp() {
@@ -131,7 +191,7 @@
                     const newName = prompt("重新命名工作表：", sheet.name);
                     if (newName && newName.trim() !== "") {
                         sheet.name = newName.trim();
-                        saveData();
+                        saveToCloud();
                         renderApp();
                     }
                 };
@@ -149,7 +209,7 @@
                 rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]]
             });
             currentSheetIndex = appData.sheets.length - 1;
-            saveData();
+            saveToCloud();
             renderApp();
         }
 
@@ -161,7 +221,7 @@
             if (confirm(`確定要刪除工作表「${appData.sheets[currentSheetIndex].name}」嗎？`)) {
                 appData.sheets.splice(currentSheetIndex, 1);
                 currentSheetIndex = Math.max(0, currentSheetIndex - 1);
-                saveData();
+                saveToCloud();
                 renderApp();
             }
         }
@@ -201,7 +261,7 @@
 
         function updateColumnName(cIdx, val) {
             appData.sheets[currentSheetIndex].columns[cIdx] = val.trim();
-            saveData();
+            saveToCloud();
             renderApp();
         }
 
@@ -212,7 +272,7 @@
 
         function updateCell(rIdx, cIdx, val) {
             appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
-            saveData();
+            saveToCloud();
             renderGanttChart();
         }
 
@@ -221,7 +281,7 @@
             if (!colName) return;
             appData.sheets[currentSheetIndex].columns.push(colName.trim());
             appData.sheets[currentSheetIndex].rows.forEach(row => row.push(""));
-            saveData();
+            saveToCloud();
             renderApp();
         }
 
@@ -232,20 +292,20 @@
             }
             appData.sheets[currentSheetIndex].columns.splice(cIdx, 1);
             appData.sheets[currentSheetIndex].rows.forEach(row => row.splice(cIdx, 1));
-            saveData();
+            saveToCloud();
             renderApp();
         }
 
         function addRow() {
             const emptyRow = new Array(appData.sheets[currentSheetIndex].columns.length).fill("");
             appData.sheets[currentSheetIndex].rows.push(emptyRow);
-            saveData();
+            saveToCloud();
             renderApp();
         }
 
         function deleteRow(rIdx) {
             appData.sheets[currentSheetIndex].rows.splice(rIdx, 1);
-            saveData();
+            saveToCloud();
             renderApp();
         }
 
@@ -254,8 +314,7 @@
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            const today = new Date('2026-09-25'); // 固定當前基準日
-
+            const today = new Date('2026-09-25');
             const monthCols = [];
             const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             
@@ -275,7 +334,6 @@
                     }
                     isMonthCol = true;
                 }
-
                 if (isMonthCol) {
                     monthCols.push({ name: displayName, originalName: cStr, index: idx });
                 }
@@ -287,7 +345,6 @@
                 const clazz = row[1] || '';
                 const machine = row[2] || '未命名機台';
                 const key = `${dept}_${clazz}_${machine}`;
-                
                 if (!machineMap[key]) {
                     machineMap[key] = { dept, clazz, machine, items: [] };
                 }
@@ -309,18 +366,14 @@
 
                 group.items.forEach(row => {
                     const type = String(row[3] || '');
-                    if (type.includes('計畫')) {
-                        planItem = row;
-                    } else if (type.includes('實際')) {
-                        actualItem = row;
-                    }
+                    if (type.includes('計畫')) planItem = row;
+                    else if (type.includes('實際')) actualItem = row;
                 });
 
                 let planStart = planItem ? String(planItem[4] || '') : '';
                 let planEnd = planItem ? String(planItem[5] || '') : '';
                 let actualStart = actualItem ? String(actualItem[4] || '') : '';
                 let actualEnd = actualItem ? String(actualItem[5] || '') : '';
-                
                 let hasActualEnd = actualEnd && actualEnd.trim() !== '';
                 
                 let isDelayed = false;
@@ -331,10 +384,8 @@
                     } else if (planStart && actualStart && actualStart > planStart) {
                         isDelayed = true;
                     } else if (hasActualEnd && planEnd && actualEnd > planEnd) {
-                        // 實際完成日大於計畫完成日（延後完工）
                         isDelayed = true;
                     } else if (!hasActualEnd && planEnd) {
-                        // 如果還沒填寫完成日（未完工），檢查計畫完成日是否小於今日
                         const pEndDate = new Date(planEnd);
                         if (!isNaN(pEndDate) && pEndDate < today) {
                             isDelayed = true;
@@ -343,7 +394,6 @@
                 }
 
                 let isCompleted = hasActualEnd && !isDelayed;
-
                 let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
 
                 if (planItem) {
@@ -356,7 +406,6 @@
                 if (actualItem) {
                     let actualBadgeClass = 'bg-emerald-500 text-white';
                     let actualLabel = '實際';
-
                     if (isDelayed) {
                         actualBadgeClass = 'bg-rose-500 text-white';
                         actualLabel = hasActualEnd ? '實際 (落後/延後)' : '實際 (未完工/落後)';
@@ -364,9 +413,7 @@
                         actualBadgeClass = 'bg-purple-600 text-white';
                         actualLabel = '實際 (已完成)';
                     }
-
                     let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
-
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
                         <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
                         <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
@@ -384,36 +431,20 @@
                         const aActive = aVal !== '' && aVal !== '0';
                         let aCellBg = 'bg-gray-200';
                         if (aActive) {
-                            if (isDelayed) {
-                                aCellBg = 'bg-rose-500 text-white';
-                            } else if (isCompleted) {
-                                aCellBg = 'bg-purple-600 text-white';
-                            } else {
-                                aCellBg = 'bg-emerald-500 text-white';
-                            }
+                            if (isDelayed) aCellBg = 'bg-rose-500 text-white';
+                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white';
+                            else aCellBg = 'bg-emerald-500 text-white';
                         }
-
-                        const pText = pActive ? (pVal.toUpperCase() === 'V' ? 'V' : (pVal === '1' ? 'V' : pVal)) : '';
-                        const aText = aActive ? (aVal.toUpperCase() === 'V' ? 'V' : (aVal === '1' ? 'V' : aVal)) : '';
 
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
                             <span class="text-[11px] text-gray-600 font-bold">${m.name}</span>
-                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm" title="計畫">
-                                ${pText}
-                            </div>
-                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm" title="實際">
-                                ${aText}
-                            </div>
+                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm">${pActive ? 'V' : ''}</div>
+                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold shadow-sm">${aActive ? 'V' : ''}</div>
                         </div>`;
                     });
-                } else {
-                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
                 }
                 matrixHtml += '</div></div>';
-
-                contentHtml += matrixHtml;
-                contentHtml += '</div>';
-
+                contentHtml += matrixHtml + '</div>';
                 div.innerHTML = headerInfo + contentHtml;
                 container.appendChild(div);
             });
@@ -422,19 +453,13 @@
         function exportGanttPNG() {
             const element = document.getElementById('gantt-export-area');
             const exportBtn = document.getElementById('export-btn');
-            
             exportBtn.style.display = 'none';
-
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
                 exportBtn.style.display = 'inline-block';
-
                 const link = document.createElement('a');
                 link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-            }).catch(err => {
-                exportBtn.style.display = 'inline-block';
-                console.error("匯出圖片失敗", err);
             });
         }
 
@@ -451,90 +476,27 @@
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                try {
-                    const data = e.target.result;
-                    const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
-                    
-                    const newSheets = [];
-                    workbook.SheetNames.forEach(sheetName => {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-                        
-                        if (json && json.length > 0) {
-                            let headerRowIdx = 0;
-                            while (headerRowIdx < json.length && (!json[headerRowIdx] || json[headerRowIdx].every(cell => cell === ""))) {
-                                headerRowIdx++;
-                            }
-                            
-                            if (headerRowIdx >= json.length) return;
-
-                            const rawColumns = json[headerRowIdx];
-                            const columns = rawColumns.map(cell => {
-                                if (cell === undefined || cell === null) return "";
-                                if (cell instanceof Date) {
-                                    const y = cell.getFullYear();
-                                    const m = String(cell.getMonth() + 1).padStart(2, '0');
-                                    const d = String(cell.getDate()).padStart(2, '0');
-                                    return `${y}-${m}-${d}`;
-                                }
-                                return String(cell).trim();
-                            }).filter(c => c !== "");
-                            
-                            const maxCols = columns.length;
-                            const rows = [];
-
-                            for (let i = headerRowIdx + 1; i < json.length; i++) {
-                                const row = json[i];
-                                if (!row) continue;
-
-                                let hasData = false;
-                                const rowData = [];
-                                for (let c = 0; c < maxCols; c++) {
-                                    let val = row[c];
-                                    if (val instanceof Date) {
-                                        val = val.getFullYear() + '/' + (val.getMonth() + 1) + '/' + val.getDate();
-                                    }
-                                    const strVal = (val !== undefined && val !== null) ? String(val).trim() : "";
-                                    if (strVal !== "") hasData = true;
-                                    rowData.push(strVal);
-                                }
-
-                                if (hasData) {
-                                    rows.push(rowData);
-                                }
-                            }
-
-                            newSheets.push({
-                                name: sheetName,
-                                columns: columns,
-                                rows: rows.length > 0 ? rows : [new Array(maxCols).fill("")]
-                            });
-                        }
-                    });
-
-                    if (newSheets.length > 0) {
-                        appData.sheets = newSheets;
-                        currentSheetIndex = 0;
-                        saveData();
-                        renderApp();
-                        alert("🎉 Excel 檔案匯入成功！");
-                    } else {
-                        alert("⚠️ Excel 檔案內容為空或格式無法辨識。");
+                const workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+                const newSheets = [];
+                workbook.SheetNames.forEach(sheetName => {
+                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" });
+                    if (json && json.length > 0) {
+                        let hIdx = json.findIndex(row => row.some(cell => cell !== ""));
+                        if (hIdx === -1) return;
+                        const columns = json[hIdx].map(c => String(c).trim()).filter(c => c !== "");
+                        const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => columns.map((_, i) => row[i] !== undefined ? String(row[i]) : ""));
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")] });
                     }
-                } catch (err) {
-                    console.error("解析 Excel 發生錯誤:", err);
-                    alert("❌ 解析 Excel 失敗，請確認檔案格式是否正確。");
-                } finally {
-                    event.target.value = '';
+                });
+                if (newSheets.length > 0) {
+                    appData.sheets = newSheets;
+                    currentSheetIndex = 0;
+                    saveToCloud();
+                    renderApp();
+                    alert("🎉 雲端匯入與同步成功！");
                 }
-            };
-            reader.onerror = function(err) {
-                console.error("讀取檔案失敗:", err);
-                alert("❌ 讀取檔案失敗！");
-                event.target.value = '';
             };
             reader.readAsBinaryString(file);
         }
