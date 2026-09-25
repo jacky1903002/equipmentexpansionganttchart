@@ -420,7 +420,6 @@
                             }
                         }
 
-                        // 顯示打勾符號（若輸入的是 V 或其他字元則原樣或顯示打勾）
                         const pText = pActive ? (pVal.toUpperCase() === 'V' ? 'V' : '✓') : '';
                         const aText = aActive ? (aVal.toUpperCase() === 'V' ? 'V' : '✓') : '';
 
@@ -467,6 +466,7 @@
             XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
+        // 強固型 Excel 匯入函式（完整相容您提供的多列排程與 V 標記格式）
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -475,27 +475,47 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: false, raw: true });
                     
-                    appData.sheets = [];
+                    const newSheets = [];
                     workbook.SheetNames.forEach(sheetName => {
                         const worksheet = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                        if (json.length > 0) {
-                            const columns = json[0].map(cell => cell !== undefined ? String(cell).trim() : "");
-                            const rows = json.slice(1).map(row => row.map(cell => cell !== undefined ? String(cell).trim() : ""));
-                            appData.sheets.push({ name: sheetName, columns, rows: rows.length ? rows : [new Array(columns.length).fill("")] });
+                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                        
+                        if (json && json.length > 0) {
+                            // 清理標頭欄位
+                            const columns = json[0].map(cell => (cell !== undefined && cell !== null) ? String(cell).trim() : "");
+                            
+                            // 清理資料列，並過濾掉完全空白的行
+                            const rows = json.slice(1)
+                                .map(row => columns.map((_, colIdx) => {
+                                    const val = row[colIdx];
+                                    return (val !== undefined && val !== null) ? String(val).trim() : "";
+                                }))
+                                .filter(row => row.some(cell => cell !== ""));
+
+                            newSheets.push({
+                                name: sheetName,
+                                columns: columns,
+                                rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")]
+                            });
                         }
                     });
-                    currentSheetIndex = 0;
-                    saveDataToFirebase();
-                    renderApp();
-                    alert("Excel 匯入成功！");
+
+                    if (newSheets.length > 0) {
+                        appData.sheets = newSheets;
+                        currentSheetIndex = 0;
+                        saveDataToFirebase();
+                        renderApp();
+                        alert("Excel 匯入成功！");
+                    } else {
+                        alert("Excel 檔案內容為空或格式無法辨識。");
+                    }
                 } catch (err) {
-                    console.error("解析 Excel 失敗:", err);
+                    console.error("解析 Excel 發生錯誤:", err);
                     alert("解析 Excel 失敗，請確認檔案格式是否正確。");
                 } finally {
-                    event.target.value = '';
+                    event.target.value = ''; // 重置檔案選取器
                 }
             };
             reader.onerror = function(err) {
