@@ -44,7 +44,7 @@
             </div>
         </header>
 
-        <!-- 分頁與工作表操作 (支援雙擊分頁改名) -->
+        <!-- 分頁與工作表操作 -->
         <div class="bg-white border-b px-6 py-3 flex flex-wrap items-center justify-between gap-4">
             <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1"></div>
             <div class="flex items-center space-x-2">
@@ -79,7 +79,7 @@
                 </table>
             </div>
 
-            <!-- 甘特圖與月份矩陣視覺化區 (含獨立匯出 PNG 按鈕) -->
+            <!-- 甘特圖與月份矩陣視覺化區 -->
             <div id="gantt-export-area" class="bg-white rounded-xl shadow p-6 relative">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
@@ -88,6 +88,7 @@
                             <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫 (Baseline)</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常/超前</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
                         <button onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition">🖼️ 匯出甘特圖 PNG</button>
                     </div>
@@ -251,7 +252,7 @@
                 sheet.columns.forEach((_, cIdx) => {
                     const val = row[cIdx] !== undefined ? row[cIdx] : '';
                     html += `<td class="px-2 py-1.5 whitespace-nowrap border-b">
-                        <input type="text" value="${val}" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded">
+                        <input type="text" value="${val}" oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded">
                     </td>`;
                 });
                 html += `<td class="px-2 py-1.5 whitespace-nowrap text-center border-b">
@@ -269,6 +270,13 @@
             renderApp();
         }
 
+        // 即時同步：當在表格輸入時即時更新資料並重新渲染甘特圖
+        function updateCellInstant(rIdx, cIdx, val) {
+            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
+            renderGanttChart();
+        }
+
+        // 儲存至資料庫
         function updateCell(rIdx, cIdx, val) {
             appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
             saveDataToFirebase();
@@ -308,7 +316,7 @@
             renderApp();
         }
 
-        // 重新排版：將「計畫」與「實際」上下緊鄰排列，共用同一個月份標頭矩陣
+        // 甘特圖渲染與狀態判斷（支援即時同步與已結案標示）
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -352,11 +360,15 @@
                     }
                 });
 
-                // 檢查實際是否落後
                 let planStart = planItem ? (planItem[4] || '') : '';
                 let actualStart = actualItem ? (actualItem[4] || '') : '';
+                let actualEnd = actualItem ? (actualItem[5] || '') : '';
+                
+                // 檢查是否已結案 (實際完成日期有填寫即視為已結案)
+                let isCompleted = actualEnd && actualEnd.trim() !== '';
                 let isDelayed = false;
-                if (actualItem) {
+
+                if (actualItem && !isCompleted) {
                     const typeStr = actualItem[3] || '';
                     if (typeStr.includes('落後') || (planStart && actualStart && actualStart !== planStart && actualStart > planStart)) {
                         isDelayed = true;
@@ -375,43 +387,51 @@
                     </div>`;
                 }
 
-                // 2. 實際行 (移到計畫下方，月份對齊)
+                // 2. 實際行（若已結案顯示「已完成」，否則顯示正常或落後）
                 if (actualItem) {
-                    const aStart = actualItem[4] || '';
-                    const aEnd = actualItem[5] || '';
-                    const actualBadgeClass = isDelayed ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white';
-                    const actualLabel = isDelayed ? '實際 (落後)' : '實際';
+                    let actualBadgeClass = 'bg-emerald-500 text-white';
+                    let actualLabel = '實際';
+
+                    if (isCompleted) {
+                        actualBadgeClass = 'bg-purple-600 text-white';
+                        actualLabel = '實際 (已完成)';
+                    } else if (isDelayed) {
+                        actualBadgeClass = 'bg-rose-500 text-white';
+                        actualLabel = '實際 (落後)';
+                    }
 
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
                         <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
-                        <span class="text-xs text-gray-500">${aStart} ~ ${aEnd}</span>
+                        <span class="text-xs text-gray-500">${actualStart} ~ ${actualEnd}</span>
                     </div>`;
                 }
 
-                // 3. 共同的月份標頭與矩陣 (最上方顯示月份名稱，下方對齊顯示計畫與實際方格)
+                // 3. 月份矩陣對齊與顏色呈現
                 let matrixHtml = '<div class="pt-2"><div class="flex space-x-1 overflow-x-auto">';
                 if (monthCols.length > 0) {
                     monthCols.forEach(m => {
-                        // 計畫方格狀態
                         const pVal = planItem ? planItem[m.index] : '';
                         const pActive = pVal && pVal !== '0' && pVal !== '';
                         const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900' : 'bg-gray-200';
 
-                        // 實際方格狀態
                         const aVal = actualItem ? actualItem[m.index] : '';
                         const aActive = aVal && aVal !== '0' && aVal !== '';
                         let aCellBg = 'bg-gray-200';
                         if (aActive) {
-                            aCellBg = isDelayed ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white';
+                            if (isCompleted) {
+                                aCellBg = 'bg-purple-600 text-white';
+                            } else if (isDelayed) {
+                                aCellBg = 'bg-rose-500 text-white';
+                            } else {
+                                aCellBg = 'bg-emerald-500 text-white';
+                            }
                         }
 
                         matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px] gap-1">
                             <span class="text-[10px] text-gray-500 font-medium">${m.name}</span>
-                            <!-- 計畫格子 -->
                             <div class="w-full h-5 rounded ${pCellBg} flex items-center justify-center text-[10px] font-bold" title="計畫">
                                 ${pActive ? '✓' : ''}
                             </div>
-                            <!-- 實際格子 (緊鄰計畫下方對齊) -->
                             <div class="w-full h-5 rounded ${aCellBg} flex items-center justify-center text-[10px] font-bold" title="實際">
                                 ${aActive ? '✓' : ''}
                             </div>
