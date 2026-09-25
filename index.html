@@ -116,28 +116,15 @@
         // ==========================================
         // 請在此處填入您的 Firebase 專案設定值
         // ==========================================
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
-  authDomain: "equipmentexpansionganttchart.firebaseapp.com",
-  databaseURL: "https://equipmentexpansionganttchart-default-rtdb.firebaseio.com",
-  projectId: "equipmentexpansionganttchart",
-  storageBucket: "equipmentexpansionganttchart.firebasestorage.app",
-  messagingSenderId: "357406784955",
-  appId: "1:357406784955:web:e3661233994a32196e589e",
-  measurementId: "G-HYXNC4YZ19"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "equipmentexpansionganttchart.firebaseapp.com",
+            databaseURL: "https://equipmentexpansionganttchart-default-rtdb.firebaseio.com",
+            projectId: "equipmentexpansionganttchart",
+            storageBucket: "equipmentexpansionganttchart.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -167,13 +154,20 @@ const analytics = getAnalytics(app);
             const pass = document.getElementById('login-pass').value.trim();
             const errEl = document.getElementById('login-error');
 
+            if (!email || !pass) {
+                errEl.innerText = "請輸入電子郵件與密碼！";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
             auth.signInWithEmailAndPassword(email, pass)
                 .then(() => {
                     document.getElementById('login-modal').classList.add('hidden');
                     errEl.classList.add('hidden');
                 })
                 .catch((error) => {
-                    errEl.innerText = "登入失敗：" + error.message;
+                    console.error(error);
+                    errEl.innerText = "登入失敗：請確認 Email 與密碼是否正確，或已在 Firebase Console 啟用 Email/Password 驗證。";
                     errEl.classList.remove('hidden');
                 });
         }
