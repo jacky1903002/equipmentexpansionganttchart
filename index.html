@@ -125,35 +125,30 @@
             appId: "YOUR_APP_ID"
         };
 
-        // 在此設定您的管理員帳號與密碼
-        const ADMIN_USER = "admin";
-        const ADMIN_PASS = "123456";
+// 取得輸入框的電子郵件與密碼
+const email = document.getElementById('login-user').value.trim();
+const password = document.getElementById('login-pass').value.trim();
+const errEl = document.getElementById('login-error');
 
-        firebase.initializeApp(firebaseConfig);
-        const rtdb = firebase.database();
-
-        let appData = { sheets: [] };
-        let currentSheetIndex = 0;
-        let isLoggedIn = false;
-
-        window.addEventListener('DOMContentLoaded', () => {
-            loadFromCloud();
-        });
-
-        // 登入驗證邏輯
-        function handleLogin() {
-            const u = document.getElementById('login-user').value.trim();
-            const p = document.getElementById('login-pass').value.trim();
-            const errEl = document.getElementById('login-error');
-
-            if (u === ADMIN_USER && p === ADMIN_PASS) {
-                isLoggedIn = true;
-                document.getElementById('login-modal').classList.add('hidden');
-                updateUIPermissions();
-            } else {
-                errEl.classList.remove('hidden');
-            }
-        }
+// 透過 Firebase 進行電子郵件/密碼登入驗證
+firebase.auth().signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+        // 登入成功
+        const user = userCredential.user;
+        console.log("登入成功：", user.email);
+        
+        isLoggedIn = true;
+        document.getElementById('login-modal').classList.add('hidden');
+        updateUIPermissions(); // 解鎖編輯與匯入功能
+    })
+    .catch((error) => {
+        // 登入失敗（帳號不存在、密碼錯誤或格式不符）
+        console.error("登入失敗錯誤代碼：", error.code);
+        console.error("登入失敗錯誤訊息：", error.message);
+        
+        errEl.innerText = "帳號或密碼錯誤，請重新輸入！";
+        errEl.classList.remove('hidden');
+    });
 
         function enterAsGuest() {
             isLoggedIn = false;
