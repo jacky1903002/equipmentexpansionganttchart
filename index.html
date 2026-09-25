@@ -10,38 +10,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- html2canvas (匯出 PNG) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Firebase SDK (v8) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans antialiased">
 
-    <!-- 登入畫面 (未登入時顯示) -->
-    <div id="login-screen" class="flex items-center justify-center min-h-screen bg-gray-100 absolute inset-0 z-50">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border text-center">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">📊 機台擴張甘特圖系統</h2>
-            <p class="text-sm text-gray-500 mb-6">請選擇登入方式以同步雲端資料</p>
-            <div class="space-y-3">
-                <button onclick="loginWithGoogle()" class="w-full bg-white border border-gray-300 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2 shadow-sm">
-                    <span>🌐</span> 使用 Google 帳號登入
-                </button>
-                <button onclick="enterGuestMode()" class="w-full bg-gray-800 text-white py-2.5 rounded-lg font-medium hover:bg-gray-900 transition shadow-sm">
-                    👤 訪客模式 (本地測試)
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 主應用程式介面 -->
+    <!-- 主應用程式介面 (直接顯示，不需登入) -->
     <div id="app-screen" class="flex flex-col min-h-screen">
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <span>📊</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-normal">專業商業版</span>
             </h1>
             <div class="flex items-center space-x-4">
-                <span id="user-info" class="text-sm text-gray-600 font-medium"></span>
-                <button onclick="logout()" class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-sm hover:bg-red-100 transition border border-red-200">登出 / 返回</button>
+                <span id="user-info" class="text-sm text-gray-600 font-medium">使用者: 本地端模式</span>
             </div>
         </header>
 
@@ -103,25 +82,8 @@
         </main>
     </div>
 
-    <!-- JavaScript 邏輯與 Firebase 設定 -->
+    <!-- JavaScript 邏輯 (純本地端儲存) -->
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
-            authDomain: "equipmentexpansionganttchart.firebaseapp.com",
-            databaseURL: "https://equipmentexpansionganttchart-default-rtdb.firebaseio.com",
-            projectId: "equipmentexpansionganttchart",
-            storageBucket: "equipmentexpansionganttchart.firebasestorage.app",
-            messagingSenderId: "357406784955",
-            appId: "1:357406784955:web:e3661233994a32196e589e",
-            measurementId: "G-HYXNC4YZ19"
-        };
-
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
         let defaultAppData = {
             sheets: [
                 {
@@ -135,81 +97,21 @@
             ]
         };
 
-        let appData = JSON.parse(JSON.stringify(defaultAppData));
+        let appData = loadFromLocalStorage() || JSON.parse(JSON.stringify(defaultAppData));
         let currentSheetIndex = 0;
-        let isGuestMode = false;
-        let currentUserId = null;
 
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUserId = user.uid;
-                isGuestMode = false;
-                document.getElementById('user-info').innerText = `使用者: ${user.email || user.displayName}`;
-                document.getElementById('login-screen').style.display = 'none';
-                loadDataFromFirebase();
-            } else if (!isGuestMode) {
-                document.getElementById('login-screen').style.display = 'flex';
-            }
+        // 頁面載入後直接渲染
+        window.addEventListener('DOMContentLoaded', () => {
+            renderApp();
         });
 
-        function loginWithGoogle() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch(error => {
-                console.error("登入失敗", error);
-                alert("登入失敗：" + error.message);
-            });
-        }
-
-        function enterGuestMode() {
-            isGuestMode = true;
-            currentUserId = 'guest_user';
-            document.getElementById('user-info').innerText = '使用者: 訪客模式 (本地端)';
-            document.getElementById('login-screen').style.display = 'none';
-            appData = loadFromLocalStorage() || JSON.parse(JSON.stringify(defaultAppData));
-            renderApp();
-        }
-
-        function logout() {
-            auth.signOut().then(() => {
-                isGuestMode = false;
-                document.getElementById('login-screen').style.display = 'flex';
-            });
-        }
-
-        function loadDataFromFirebase() {
-            db.collection("ganttData").doc(currentUserId).get().then(doc => {
-                if (doc.exists && doc.data().sheets) {
-                    appData = doc.data();
-                } else {
-                    appData = JSON.parse(JSON.stringify(defaultAppData));
-                    saveDataToFirebase();
-                }
-                renderApp();
-            }).catch(err => {
-                console.error("讀取雲端資料失敗", err);
-                appData = JSON.parse(JSON.stringify(defaultAppData));
-                renderApp();
-            });
-        }
-
         function saveData() {
-            if (isGuestMode) {
-                localStorage.setItem('gantt_guest_data', JSON.stringify(appData));
-            } else {
-                saveDataToFirebase();
-            }
+            localStorage.setItem('gantt_local_data', JSON.stringify(appData));
         }
 
         function loadFromLocalStorage() {
-            const data = localStorage.getItem('gantt_guest_data');
+            const data = localStorage.getItem('gantt_local_data');
             return data ? JSON.parse(data) : null;
-        }
-
-        function saveDataToFirebase() {
-            if (isGuestMode || !currentUserId) return;
-            db.collection("ganttData").doc(currentUserId).set(appData).catch(err => {
-                console.error("雲端同步失敗", err);
-            });
         }
 
         function renderApp() {
@@ -449,7 +351,6 @@
                         actualLabel = '實際 (落後)';
                     }
 
-                    // 確保即使實際未填結束日期，也能乾淨呈現字串
                     let actualDateStr = actualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (進行中/未定)`;
 
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
