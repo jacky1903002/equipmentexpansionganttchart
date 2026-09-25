@@ -144,14 +144,29 @@
         function formatDateClean(val) {
             if (!val) return "";
             const str = String(val).trim();
-            // 嘗試解析成日期
             const d = new Date(str);
             if (!isNaN(d.getTime()) && (str.includes("GMT") || str.includes("T") || str.length > 10)) {
                 const year = d.getFullYear();
                 const month = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
-                // 確保年份合理（避免誤判一般文字）
                 if (year >= 2000 && year <= 2100) {
+                    return `${year}/${month}/${day}`;
+                }
+            }
+            return str;
+        }
+
+        // 輔助函式：將欄位標題（如日期或月份欄）轉為簡短的 YYYY/MM/DD 或 YYYY-MM 格式
+        function formatHeaderClean(val) {
+            if (!val) return "";
+            const str = String(val).trim();
+            const d = new Date(str);
+            if (!isNaN(d.getTime()) && (str.includes("GMT") || str.includes("T") || str.length > 10)) {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                if (year >= 2000 && year <= 2100) {
+                    // 如果是每月第一天（如 01 號），可以顯示成 YYYY-MM，或者直接顯示 YYYY/MM/DD
                     return `${year}/${month}/${day}`;
                 }
             }
@@ -232,6 +247,7 @@
                     appData = data;
                     // 清理所有現有資料中的冗長日期格式
                     appData.sheets.forEach(sheet => {
+                        sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
                         sheet.rows.forEach(row => {
                             if (row.length > 4) {
                                 row[4] = formatDateClean(row[4]);
@@ -245,7 +261,7 @@
                     appData = {
                         sheets: [{
                             name: "機台擴張排程",
-                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26", "Mar-26", "Apr-26", "May-26", "Jun-26", "Jul-26", "Aug-26", "Sep-26", "Oct-26", "Nov-26", "Dec-26"],
+                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01", "2026/07/01", "2026/08/01", "2026/09/01", "2026/10/01", "2026/11/01", "2026/12/01"],
                             rows: [
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
@@ -298,7 +314,7 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "Jan-26", "Feb-26"],
+                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01"],
                 rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]]
             });
             currentSheetIndex = appData.sheets.length - 1;
@@ -358,7 +374,7 @@
 
         function updateColumnName(cIdx, val) {
             if (!isLoggedIn) return;
-            appData.sheets[currentSheetIndex].columns[cIdx] = val.trim();
+            appData.sheets[currentSheetIndex].columns[cIdx] = formatHeaderClean(val);
             saveToCloud();
             renderApp();
         }
@@ -370,7 +386,6 @@
 
         function updateCell(rIdx, cIdx, val) {
             if (!isLoggedIn) return;
-            // 如果修改的是日期欄位，自動清理格式
             if (cIdx === 4 || cIdx === 5) {
                 val = formatDateClean(val);
             }
@@ -381,9 +396,9 @@
 
         function addColumn() {
             if (!isLoggedIn) return;
-            const colName = prompt("請輸入新欄位名稱：", `欄位 ${appData.sheets[currentSheetIndex].columns.length + 1}`);
+            const colName = prompt("請輸入新欄位名稱 (例如 2026/01/01)：", "2026/01/01");
             if (!colName) return;
-            appData.sheets[currentSheetIndex].columns.push(colName.trim());
+            appData.sheets[currentSheetIndex].columns.push(formatHeaderClean(colName));
             appData.sheets[currentSheetIndex].rows.forEach(row => row.push(""));
             saveToCloud();
             renderApp();
@@ -430,17 +445,31 @@
                 let isMonthCol = false;
                 let displayName = cStr;
 
-                if (cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
-                    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cStr)) {
-                        const parts = cStr.split('-');
-                        const yr = parts[0].slice(-2);
-                        const moIdx = parseInt(parts[1], 10) - 1;
-                        if (moIdx >= 0 && moIdx < 12) {
-                            displayName = `${monthNamesShort[moIdx]}-${yr}`;
-                        }
+                // 判斷是否為日期/月份欄位（包含含有斜線、橫線或英文月份的標題）
+                if (cStr.includes('/') || cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
+                    // 如果是標準 YYYY/MM/DD 或 YYYY-MM-DD，轉成簡短的英文月份顯示於甘特圖上方 (例如 Jan-26)
+                    const d = new Date(cStr);
+                    if (!isNaN(d.getTime())) {
+                        const yr = String(d.getFullYear()).slice(-2);
+                        const moIdx = d.getMonth();
+                        displayName = `${monthNamesShort[moIdx]}-${yr}`;
                     }
                     isMonthCol = true;
                 }
+                
+                // 前4欄（部門、課別、機台、類別）與日期區間欄（開始日期、完成日期）略過不當作矩陣行
+                if (idx >= 6 || isMonthCol) {
+                    if (idx >= 6) {
+                        isMonthCol = true;
+                        const d = new Date(cStr);
+                        if (!isNaN(d.getTime())) {
+                            const yr = String(d.getFullYear()).slice(-2);
+                            const moIdx = d.getMonth();
+                            displayName = `${monthNamesShort[moIdx]}-${yr}`;
+                        }
+                    }
+                }
+
                 if (isMonthCol) {
                     monthCols.push({ name: displayName, originalName: cStr, index: idx });
                 }
@@ -593,12 +622,13 @@
                     if (json && json.length > 0) {
                         let hIdx = json.findIndex(row => row.some(cell => cell !== ""));
                         if (hIdx === -1) return;
-                        const columns = json[hIdx].map(c => String(c).trim()).filter(c => c !== "");
+                        
+                        // 處理欄位標題，自動將長日期格式轉為乾淨的 YYYY/MM/DD
+                        const columns = json[hIdx].map(c => formatHeaderClean(c)).filter(c => c !== "");
                         
                         const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => {
                             return columns.map((_, i) => {
                                 let val = row[i] !== undefined ? row[i] : "";
-                                // 如果是第 4 或第 5 欄（通常為開始/完成日期），進行日期格式鎖定
                                 if (i === 4 || i === 5) {
                                     val = formatDateClean(val);
                                 }
@@ -614,7 +644,7 @@
                     currentSheetIndex = 0;
                     saveToCloud();
                     renderApp();
-                    alert("🎉 匯入 Excel 並成功鎖定日期格式為 YYYY/MM/DD！");
+                    alert("🎉 匯入 Excel 成功！欄位標題與日期已全面鎖定為簡潔格式。");
                 }
             };
             reader.readAsBinaryString(file);
