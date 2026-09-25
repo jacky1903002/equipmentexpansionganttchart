@@ -93,7 +93,6 @@
                             <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
-                        <!-- 加上 id="export-btn" 以便截圖時自動隱藏 -->
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
                 </div>
@@ -415,6 +414,7 @@
                 });
 
                 let planStart = planItem ? String(planItem[4] || '') : '';
+                let planEnd = planItem ? String(planItem[5] || '') : '';
                 let actualStart = actualItem ? String(actualItem[4] || '') : '';
                 let actualEnd = actualItem ? String(actualItem[5] || '') : '';
                 
@@ -431,11 +431,9 @@
                 let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
 
                 if (planItem) {
-                    const pStart = planItem[4] || '';
-                    const pEnd = planItem[5] || '';
                     contentHtml += `<div class="flex items-center space-x-2">
                         <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-900 border border-sky-400">計畫</span>
-                        <span class="text-xs text-gray-600 font-medium">${pStart} ~ ${pEnd}</span>
+                        <span class="text-xs text-gray-600 font-medium">${planStart} ~ ${planEnd}</span>
                     </div>`;
                 }
 
@@ -451,9 +449,12 @@
                         actualLabel = '實際 (落後)';
                     }
 
+                    // 確保即使實際未填結束日期，也能乾淨呈現字串
+                    let actualDateStr = actualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (進行中/未定)`;
+
                     contentHtml += `<div class="flex items-center space-x-2 mt-1">
                         <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
-                        <span class="text-xs text-gray-600 font-medium">${actualStart} ~ ${actualEnd}</span>
+                        <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
                     </div>`;
                 }
 
@@ -507,11 +508,9 @@
             const element = document.getElementById('gantt-export-area');
             const exportBtn = document.getElementById('export-btn');
             
-            // 截圖前先隱藏「匯出甘特圖 PNG」按鈕
             exportBtn.style.display = 'none';
 
             html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
-                // 恢復按鈕顯示
                 exportBtn.style.display = 'inline-block';
 
                 const link = document.createElement('a');
@@ -519,7 +518,6 @@
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             }).catch(err => {
-                // 確保發生錯誤時按鈕也會恢復顯示
                 exportBtn.style.display = 'inline-block';
                 console.error("匯出圖片失敗", err);
             });
