@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>機台擴張甘特圖管理系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS (Excel 匯入匯出) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2canvas (匯出 PNG) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Firebase SDK (Compat 模式方便單檔案使用) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+
+    <!-- 登入畫面 (未登入時顯示) -->
+    <div id="login-screen" class="flex items-center justify-center min-h-screen bg-gray-900">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-96">
+            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">系統登入</h2>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">電子郵件</label>
+                <input type="email" id="login-email" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="user@example.com">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">密碼</label>
+                <input type="password" id="login-password" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
+            </div>
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">登入</button>
+            <p id="login-error" class="text-red-500 text-xs mt-3 text-center"></p>
+        </div>
+    </div>
+
+    <!-- 主應用程式介面 (登入後顯示) -->
+    <div id="app-screen" class="hidden flex flex-col min-h-screen">
+        <!-- 頂部導覽列 -->
+        <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">📊 機台擴張甘特圖管理系統</h1>
+            <div class="flex items-center space-x-4">
+                <span id="user-email-display" class="text-sm text-gray-600"></span>
+                <button onclick="handleLogout()" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600 transition">登出</button>
+            </div>
+        </header>
+
+        <!-- 工具列與工作表分頁 -->
+        <div class="bg-white border-b px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+            <!-- 分頁清單 -->
+            <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1">
+                <!-- 動態產生工作表分頁 -->
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="addNewSheet()" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700">+ 新增工作表</button>
+                <button onclick="renameCurrentSheet()" class="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-yellow-600">重新命名</button>
+                <button onclick="deleteCurrentSheet()" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600">刪除工作表</button>
+            </div>
+        </div>
+
+        <!-- 功能動作列 (Excel & 匯出 PNG) -->
+        <div class="bg-gray-50 px-6 py-3 border-b flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <label class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition">
+                    📁 匯入 Excel <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls" onchange="importExcel(event)">
+                </label>
+                <button onclick="exportExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition">📥 匯出 Excel</button>
+            </div>
+            <button onclick="exportPNG()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">🖼️ 匯出 PNG 圖片</button>
+        </div>
+
+        <!-- 主內容區 (表格與甘特圖預覽) -->
+        <main id="export-area" class="flex-1 p-6 space-y-6 bg-gray-100">
+            <!-- 資料表格編輯區 -->
+            <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="current-sheet-title" class="text-lg font-bold text-gray-800">工作表名稱</h3>
+                    <div class="space-x-2">
+                        <button onclick="addColumn()" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">+ 新增欄位</button>
+                        <button onclick="addRow()" class="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600">+ 新增列位</button>
+                    </div>
+                </div>
+                <table id="data-table" class="min-w-full divide-y divide-gray-200 border">
+                    <!-- 動態渲染表格 -->
+                </table>
+            </div>
+
+            <!-- 甘特圖視覺化圖表區 -->
+            <div class="bg-white rounded-xl shadow p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">📈 甘特圖預覽</h3>
+                <div id="gantt-container" class="space-y-3 overflow-x-auto py-2">
+                    <!-- 動態渲染甘特圖條 -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        // TODO: 請替換為您在 Firebase 專案設定中取得的正確參數
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let appData = {
+            sheets: [
+                {
+                    name: "擴張計畫 A",
+                    columns: ["機台名稱", "負責人", "開始日期", "結束日期", "進度(%)"],
+                    rows: [
+                        ["CNC-01", "張三", "2026-03-01", "2026-03-15", "80"],
+                        ["CNC-02", "李四", "2026-03-10", "2026-03-30", "40"]
+                    ]
+                }
+            ]
+        };
+        let currentSheetIndex = 0;
+
+        // 監聽登入狀態
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
+                document.getElementById('user-email-display').innerText = `使用者: ${user.email}`;
+                loadDataFromFirebase();
+            } else {
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+            }
+        });
+
+        function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            auth.signInWithEmailAndPassword(email, password)
+                .catch((error) => {
+                    document.getElementById('login-error').innerText = "登入失敗：" + error.message;
+                });
+        }
+
+        function handleLogout() {
+            auth.signOut();
+        }
+
+        // Firebase 資料同步
+        function saveDataToFirebase() {
+            db.collection("ganttData").doc("mainDoc").set(appData)
+                .catch((error) => console.error("儲存失敗: ", error));
+        }
+
+        function loadDataFromFirebase() {
+            db.collection("ganttData").doc("mainDoc").get().then((doc) => {
+                if (doc.exists) {
+                    appData = doc.data();
+                }
+                renderApp();
+            }).catch((error) => {
+                console.error("載入失敗: ", error);
+                renderApp();
+            });
+        }
+
+        // 渲染主介面
+        function renderApp() {
+            renderSheetsTabs();
+            renderTable();
+            renderGanttChart();
+        }
+
+        // 渲染分頁
+        function renderSheetsTabs() {
+            const container = document.getElementById('sheets-tabs');
+            container.innerHTML = '';
+            appData.sheets.forEach((sheet, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-1.5 rounded-lg text-sm font-semibold transition ${idx === currentSheetIndex ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
+                btn.innerText = sheet.name;
+                btn.onclick = () => { currentSheetIndex = idx; renderApp(); };
+                container.appendChild(btn);
+            });
+            document.getElementById('current-sheet-title').innerText = appData.sheets[currentSheetIndex].name;
+        }
+
+        // 工作表管理
+        function addNewSheet() {
+            const name = prompt("請輸入新工作表名稱：", `工作表 ${appData.sheets.length + 1}`);
+            if (!name) return;
+            appData.sheets.push({
+                name: name,
+                columns: ["項目名稱", "開始日期", "結束日期"],
+                rows: [["範例項目", "2026-03-01", "2026-03-10"]]
+            });
+            currentSheetIndex = appData.sheets.length - 1;
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        function renameCurrentSheet() {
+            const current = appData.sheets[currentSheetIndex];
+            const newName = prompt("重新命名工作表：", current.name);
+            if (!newName) return;
+            current.name = newName;
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        function deleteCurrentSheet() {
+            if (appData.sheets.length <= 1) {
+                alert("至少需要保留一個工作表！");
+                return;
+            }
+            if (confirm(`確定要刪除工作表「${appData.sheets[currentSheetIndex].name}」嗎？`)) {
+                appData.sheets.splice(currentSheetIndex, 1);
+                currentSheetIndex = Math.max(0, currentSheetIndex - 1);
+                saveDataToFirebase();
+                renderApp();
+            }
+        }
+
+        // 渲染動態表格 (所有欄位/列位皆可修改名稱與刪除/新增)
+        function renderTable() {
+            const sheet = appData.sheets[currentSheetIndex];
+            const table = document.getElementById('data-table');
+            let html = '<thead class="bg-gray-50"><tr>';
+            
+            // 欄位標題列
+            sheet.columns.forEach((col, cIdx) => {
+                html += `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                    <div class="flex items-center space-x-1">
+                        <input type="text" value="${col}" onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-24">
+                        <button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs">✕</button>
+                    </div>
+                </th>`;
+            });
+            html += '<th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">操作</th></tr></thead>';
+            
+            // 資料列
+            html += '<tbody class="bg-white divide-y divide-gray-200">';
+            sheet.rows.forEach((row, rIdx) => {
+                html += '<tr>';
+                sheet.columns.forEach((_, cIdx) => {
+                    const val = row[cIdx] !== undefined ? row[cIdx] : '';
+                    html += `<td class="px-4 py-2 whitespace-nowrap border-b">
+                        <input type="text" value="${val}" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded">
+                    </td>`;
+                });
+                html += `<td class="px-4 py-2 whitespace-nowrap text-center border-b">
+                    <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-sm">刪除列</button>
+                </td>`;
+                html += '</tr>';
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function updateColumnName(cIdx, val) {
+            appData.sheets[currentSheetIndex].columns[cIdx] = val;
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        function updateCell(rIdx, cIdx, val) {
+            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
+            saveDataToFirebase();
+            renderGanttChart();
+        }
+
+        function addColumn() {
+            const colName = prompt("請輸入新欄位名稱：", `欄位 ${appData.sheets[currentSheetIndex].columns.length + 1}`);
+            if (!colName) return;
+            appData.sheets[currentSheetIndex].columns.push(colName);
+            appData.sheets[currentSheetIndex].rows.forEach(row => row.push(""));
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        function deleteColumn(cIdx) {
+            if (appData.sheets[currentSheetIndex].columns.length <= 1) {
+                alert("至少需要保留一個欄位！");
+                return;
+            }
+            appData.sheets[currentSheetIndex].columns.splice(cIdx, 1);
+            appData.sheets[currentSheetIndex].rows.forEach(row => row.splice(cIdx, 1));
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        function addRow() {
+            const emptyRow = new Array(appData.sheets[currentSheetIndex].columns.length).fill("");
+            appData.sheets[currentSheetIndex].rows.push(emptyRow);
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        function deleteRow(rIdx) {
+            appData.sheets[currentSheetIndex].rows.splice(rIdx, 1);
+            saveDataToFirebase();
+            renderApp();
+        }
+
+        // 簡易甘特圖視覺化渲染
+        function renderGanttChart() {
+            const sheet = appData.sheets[currentSheetIndex];
+            const container = document.getElementById('gantt-container');
+            container.innerHTML = '';
+
+            sheet.rows.forEach((row) => {
+                const taskName = row[0] || '未命名任務';
+                const start = row[2] || '';
+                const end = row[3] || '';
+
+                const div = document.createElement('div');
+                div.className = 'flex items-center text-sm';
+                div.innerHTML = `
+                    <div class="w-32 truncate font-medium text-gray-700" title="${taskName}">${taskName}</div>
+                    <div class="flex-1 bg-gray-100 h-6 rounded-lg relative overflow-hidden flex items-center px-2">
+                        <span class="text-xs text-gray-500 z-10">${start} ~ ${end}</span>
+                        <div class="absolute left-0 top-0 bottom-0 bg-blue-500 opacity-30 rounded-lg" style="width: 60%;"></div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // 匯出 PNG 圖片
+        function exportPNG() {
+            const element = document.getElementById('export-area');
+            html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        // 匯出 Excel
+        function exportExcel() {
+            const wb = XLSX.utils.book_new();
+            appData.sheets.forEach(sheet => {
+                const wsData = [sheet.columns, ...sheet.rows];
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+            });
+            XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
+        }
+
+        // 匯入 Excel
+        function importExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                appData.sheets = [];
+                workbook.SheetNames.forEach(sheetName => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    if (json.length > 0) {
+                        const columns = json[0].map(String);
+                        const rows = json.slice(1).map(row => row.map(cell => cell !== undefined ? String(cell) : ""));
+                        appData.sheets.push({ name: sheetName, columns, rows: rows.length ? rows : [new Array(columns.length).fill("")] });
+                    }
+                });
+                currentSheetIndex = 0;
+                saveDataToFirebase();
+                renderApp();
+                alert("Excel 匯入成功！");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
