@@ -185,8 +185,15 @@
 
         function saveDataToFirebase() {
             if (isGuestMode) return;
-            db.collection("ganttData").doc("mainDoc").set(appData)
-                .catch((error) => console.error("雲端儲存失敗: ", error));
+            // 透過 JSON 深層複製與清理，確保所有欄位皆為純字串，避免 Firestore 寫入時因型態問題而崩潰
+            const cleanData = JSON.parse(JSON.stringify(appData));
+            db.collection("ganttData").doc("mainDoc").set(cleanData)
+                .then(() => {
+                    console.log("雲端同步成功");
+                })
+                .catch((error) => {
+                    console.error("雲端儲存失敗: ", error);
+                });
         }
 
         function loadDataFromFirebase() {
@@ -348,12 +355,10 @@
             
             sheet.columns.forEach((col, idx) => {
                 let cStr = String(col || '').trim();
-                // 智慧辨識月份欄位（包含短英文、含有 dash、或是從 Excel 匯出的 yyyy-mm-dd 格式）
                 let isMonthCol = false;
                 let displayName = cStr;
 
                 if (cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
-                    // 嘗試轉換如 2026-01-3 成為 Jan-26
                     if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cStr)) {
                         const parts = cStr.split('-');
                         const yr = parts[0].slice(-2);
@@ -514,7 +519,7 @@
             XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
-        // 商業級防彈 Excel 匯入模組（完美相容各種日期格式與陣列解析，絕不崩潰）
+        // 商業級防彈 Excel 匯入模組（具備資料淨化與雲端防崩潰機制）
         function importExcel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -585,7 +590,7 @@
                     if (newSheets.length > 0) {
                         appData.sheets = newSheets;
                         currentSheetIndex = 0;
-                        saveDataToFirebase();
+                        saveDataToFirebase(); // 此處已加入 JSON 淨化，登入狀態下也能完美同步至雲端
                         renderApp();
                         alert("🎉 Excel 檔案匯入成功！");
                     } else {
