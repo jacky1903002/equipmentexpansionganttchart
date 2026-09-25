@@ -116,7 +116,6 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // 設定登入狀態保持在 LocalStorage，避免重新整理或網路波動就被登出
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
             .catch((error) => {
                 console.error("設定保持登入失敗: ", error);
@@ -136,7 +135,6 @@
         };
         let currentSheetIndex = 0;
 
-        // 監聽登入狀態
         auth.onAuthStateChanged((user) => {
             if (user) {
                 document.getElementById('login-screen').classList.add('hidden');
@@ -310,6 +308,7 @@
             renderApp();
         }
 
+        // 重新排版：將「計畫」與「實際」上下緊鄰排列，共用同一個月份標頭矩陣
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -337,83 +336,96 @@
 
             Object.values(machineMap).forEach(group => {
                 const div = document.createElement('div');
-                div.className = 'border rounded-lg p-3 bg-gray-50 flex flex-col gap-3';
+                div.className = 'border rounded-lg p-3 bg-gray-50 flex flex-col gap-2';
                 
                 let headerInfo = `<div class="text-xs font-bold text-gray-700">${group.dept} / ${group.clazz} / <span class="text-blue-600 text-sm">${group.machine}</span></div>`;
                 
-                let subRowsHtml = '<div class="space-y-2 pl-2 border-l-2 border-blue-200">';
-                
-                let planStart = '';
+                let planItem = null;
+                let actualItem = null;
+
                 group.items.forEach(row => {
-                    if ((row[3] || '').includes('計畫')) {
-                        planStart = row[4] || '';
+                    const type = row[3] || '';
+                    if (type.includes('計畫')) {
+                        planItem = row;
+                    } else if (type.includes('實際')) {
+                        actualItem = row;
                     }
                 });
 
-                group.items.sort((a, b) => {
-                    const typeA = a[3] || '';
-                    const typeB = b[3] || '';
-                    if (typeA.includes('計畫') && !typeB.includes('計畫')) return -1;
-                    if (!typeA.includes('計畫') && typeB.includes('計畫')) return 1;
-                    return 0;
-                });
-
-                group.items.forEach(row => {
-                    const type = row[3] || '計畫';
-                    const start = row[4] || '';
-                    const end = row[5] || '';
-
-                    let badgeClass = 'bg-sky-200 text-sky-800 border border-sky-400';
-                    let isDelayed = false;
-
-                    if (type.includes('實際')) {
-                        if (type.includes('落後') || (planStart && start && start !== planStart && start > planStart)) {
-                            isDelayed = true;
-                            badgeClass = 'bg-rose-500 text-white';
-                        } else {
-                            badgeClass = 'bg-emerald-500 text-white';
-                        }
+                // 檢查實際是否落後
+                let planStart = planItem ? (planItem[4] || '') : '';
+                let actualStart = actualItem ? (actualItem[4] || '') : '';
+                let isDelayed = false;
+                if (actualItem) {
+                    const typeStr = actualItem[3] || '';
+                    if (typeStr.includes('落後') || (planStart && actualStart && actualStart !== planStart && actualStart > planStart)) {
+                        isDelayed = true;
                     }
+                }
 
-                    let barHtml = `<div class="flex items-center space-x-2">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${type} ${isDelayed ? '(落後)' : ''}</span>
-                        <span class="text-xs text-gray-500">${start} ~ ${end}</span>
+                let contentHtml = '<div class="space-y-2 pl-2 border-l-2 border-blue-200">';
+
+                // 1. 計畫行
+                if (planItem) {
+                    const pStart = planItem[4] || '';
+                    const pEnd = planItem[5] || '';
+                    contentHtml += `<div class="flex items-center space-x-2">
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-800 border border-sky-400">計畫</span>
+                        <span class="text-xs text-gray-500">${pStart} ~ ${pEnd}</span>
                     </div>`;
+                }
 
-                    let matrixHtml = '<div class="flex space-x-1 overflow-x-auto pt-1">';
-                    if (monthCols.length > 0) {
-                        monthCols.forEach(m => {
-                            const val = row[m.index];
-                            const isActive = val && val !== '0' && val !== '';
-                            
-                            let cellBg = 'bg-gray-200';
-                            if (isActive) {
-                                if (type.includes('計畫')) {
-                                    cellBg = 'bg-sky-200 border border-sky-400 text-sky-900';
-                                } else if (isDelayed) {
-                                    cellBg = 'bg-rose-500 text-white';
-                                } else {
-                                    cellBg = 'bg-emerald-500 text-white';
-                                }
-                            }
+                // 2. 實際行 (移到計畫下方，月份對齊)
+                if (actualItem) {
+                    const aStart = actualItem[4] || '';
+                    const aEnd = actualItem[5] || '';
+                    const actualBadgeClass = isDelayed ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white';
+                    const actualLabel = isDelayed ? '實際 (落後)' : '實際';
 
-                            matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px]">
-                                <span class="text-[10px] text-gray-500 mb-1">${m.name}</span>
-                                <div class="w-full h-6 rounded ${cellBg} flex items-center justify-center text-[10px] font-bold">
-                                    ${isActive ? '✓' : ''}
-                                </div>
-                            </div>`;
-                        });
-                    } else {
-                        matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
-                    }
-                    matrixHtml += '</div>';
+                    contentHtml += `<div class="flex items-center space-x-2 mt-1">
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass}">${actualLabel}</span>
+                        <span class="text-xs text-gray-500">${aStart} ~ ${aEnd}</span>
+                    </div>`;
+                }
 
-                    subRowsHtml += `<div class="flex flex-col gap-1">${barHtml}${matrixHtml}</div>`;
-                });
+                // 3. 共同的月份標頭與矩陣 (最上方顯示月份名稱，下方對齊顯示計畫與實際方格)
+                let matrixHtml = '<div class="pt-2"><div class="flex space-x-1 overflow-x-auto">';
+                if (monthCols.length > 0) {
+                    monthCols.forEach(m => {
+                        // 計畫方格狀態
+                        const pVal = planItem ? planItem[m.index] : '';
+                        const pActive = pVal && pVal !== '0' && pVal !== '';
+                        const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900' : 'bg-gray-200';
 
-                subRowsHtml += '</div>';
-                div.innerHTML = headerInfo + subRowsHtml;
+                        // 實際方格狀態
+                        const aVal = actualItem ? actualItem[m.index] : '';
+                        const aActive = aVal && aVal !== '0' && aVal !== '';
+                        let aCellBg = 'bg-gray-200';
+                        if (aActive) {
+                            aCellBg = isDelayed ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white';
+                        }
+
+                        matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[50px] gap-1">
+                            <span class="text-[10px] text-gray-500 font-medium">${m.name}</span>
+                            <!-- 計畫格子 -->
+                            <div class="w-full h-5 rounded ${pCellBg} flex items-center justify-center text-[10px] font-bold" title="計畫">
+                                ${pActive ? '✓' : ''}
+                            </div>
+                            <!-- 實際格子 (緊鄰計畫下方對齊) -->
+                            <div class="w-full h-5 rounded ${aCellBg} flex items-center justify-center text-[10px] font-bold" title="實際">
+                                ${aActive ? '✓' : ''}
+                            </div>
+                        </div>`;
+                    });
+                } else {
+                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
+                }
+                matrixHtml += '</div></div>';
+
+                contentHtml += matrixHtml;
+                contentHtml += '</div>';
+
+                div.innerHTML = headerInfo + contentHtml;
                 container.appendChild(div);
             });
         }
