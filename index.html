@@ -44,12 +44,11 @@
             </div>
         </header>
 
-        <!-- 分頁與工作表操作 -->
+        <!-- 分頁與工作表操作 (支援雙擊分頁改名) -->
         <div class="bg-white border-b px-6 py-3 flex flex-wrap items-center justify-between gap-4">
             <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1"></div>
             <div class="flex items-center space-x-2">
                 <button onclick="addNewSheet()" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700">+ 新增工作表</button>
-                <button onclick="renameCurrentSheet()" class="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-yellow-600">重新命名</button>
                 <button onclick="deleteCurrentSheet()" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600">刪除工作表</button>
             </div>
         </div>
@@ -62,8 +61,6 @@
                 </label>
                 <button onclick="exportExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition">📥 匯出 Excel</button>
             </div>
-            <!-- 修改：按鈕僅針對甘特圖區塊匯出 PNG -->
-            <button onclick="exportGanttPNG()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">🖼️ 匯出甘特圖 PNG</button>
         </div>
 
         <!-- 主內容區 -->
@@ -82,14 +79,17 @@
                 </table>
             </div>
 
-            <!-- 甘特圖與月份矩陣視覺化區 (專門用來匯出 PNG 的範圍) -->
-            <div id="gantt-export-area" class="bg-white rounded-xl shadow p-6">
+            <!-- 甘特圖與月份矩陣視覺化區 (含獨立匯出 PNG 按鈕) -->
+            <div id="gantt-export-area" class="bg-white rounded-xl shadow p-6 relative">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
-                    <div class="flex items-center space-x-3 text-xs">
-                        <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫 (Baseline)</span>
-                        <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常/超前</span>
-                        <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-3 text-xs">
+                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫 (Baseline)</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常/超前</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
+                        </div>
+                        <button onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition">🖼️ 匯出甘特圖 PNG</button>
                     </div>
                 </div>
                 <div id="gantt-container" class="space-y-4 overflow-x-auto py-2">
@@ -178,14 +178,24 @@
             renderGanttChart();
         }
 
+        // 渲染分頁並支援雙擊更改名稱
         function renderSheetsTabs() {
             const container = document.getElementById('sheets-tabs');
             container.innerHTML = '';
             appData.sheets.forEach((sheet, idx) => {
                 const btn = document.createElement('button');
-                btn.className = `px-4 py-1.5 rounded-lg text-sm font-semibold transition ${idx === currentSheetIndex ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
+                btn.className = `px-4 py-1.5 rounded-lg text-sm font-semibold transition ${idx === currentSheetIndex ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
                 btn.innerText = sheet.name;
                 btn.onclick = () => { currentSheetIndex = idx; renderApp(); };
+                // 雙擊事件直接改名
+                btn.ondblclick = () => {
+                    const newName = prompt("重新命名工作表：", sheet.name);
+                    if (newName && newName.trim() !== "") {
+                        sheet.name = newName.trim();
+                        saveDataToFirebase();
+                        renderApp();
+                    }
+                };
                 container.appendChild(btn);
             });
             document.getElementById('current-sheet-title').innerText = appData.sheets[currentSheetIndex].name;
@@ -200,15 +210,6 @@
                 rows: [["部門A", "課別A", "機台A", "計畫", "2026-05-01", "2026-06-01", "1", "1"]]
             });
             currentSheetIndex = appData.sheets.length - 1;
-            saveDataToFirebase();
-            renderApp();
-        }
-
-        function renameCurrentSheet() {
-            const current = appData.sheets[currentSheetIndex];
-            const newName = prompt("重新命名工作表：", current.name);
-            if (!newName) return;
-            current.name = newName;
             saveDataToFirebase();
             renderApp();
         }
@@ -304,7 +305,7 @@
             renderApp();
         }
 
-        // 甘特圖渲染：支援淺藍（計畫）、綠色（正常/超前）、紅/橘色（落後）
+        // 自動對比計畫與實際：若實際日期晚於計畫，自動判定為落後並顯示紅色
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -314,6 +315,17 @@
             sheet.columns.forEach((col, idx) => {
                 if (col.includes('-') || ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].some(m => col.includes(m))) {
                     monthCols.push({ name: col, index: idx });
+                }
+            });
+
+            // 先撈出該機台對應的計畫開始日，用來與實際開工日做對比
+            const planStartMap = {};
+            sheet.rows.forEach(row => {
+                const machine = row[2];
+                const type = row[3];
+                const start = row[4];
+                if (type === '計畫' && machine) {
+                    planStartMap[machine] = start;
                 }
             });
 
@@ -330,11 +342,15 @@
                 
                 let headerInfo = `<div class="text-xs font-bold text-gray-700">${dept} / ${clazz} / <span class="text-blue-600">${machine}</span></div>`;
                 
-                // 顏色對應判定
+                // 自動判定狀態顏色
                 let badgeClass = 'bg-sky-200 text-sky-800 border border-sky-400';
+                let isDelayed = false;
+
                 if (type.includes('實際')) {
-                    // 這裡可以根據您的判定（例如實際開工日晚於計畫或帶有落後字眼則顯示紅色/橘色，否則綠色）
-                    if (type.includes('落後')) {
+                    const planStart = planStartMap[machine];
+                    // 簡單字串或月份比較：若實際填寫的開始日期比計畫晚（例如計畫5月1日，實際6月1日），標記為落後
+                    if (type.includes('落後') || (planStart && start && start !== planStart && start > planStart)) {
+                        isDelayed = true;
                         badgeClass = 'bg-rose-500 text-white';
                     } else {
                         badgeClass = 'bg-emerald-500 text-white';
@@ -342,7 +358,7 @@
                 }
 
                 let barHtml = `<div class="flex items-center space-x-2">
-                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${type}</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold ${badgeClass}">${type} ${isDelayed ? '(落後)' : ''}</span>
                     <span class="text-xs text-gray-500">${start} ~ ${end}</span>
                 </div>`;
 
@@ -355,11 +371,11 @@
                         let cellBg = 'bg-gray-200';
                         if (isActive) {
                             if (type === '計畫') {
-                                cellBg = 'bg-sky-200 border border-sky-400 text-sky-900'; // 淺藍色代表計畫基準線
-                            } else if (type.includes('落後')) {
-                                cellBg = 'bg-rose-500 text-white'; // 紅色/橘色代表落後
+                                cellBg = 'bg-sky-200 border border-sky-400 text-sky-900';
+                            } else if (isDelayed) {
+                                cellBg = 'bg-rose-500 text-white'; // 落後顯示紅色
                             } else {
-                                cellBg = 'bg-emerald-500 text-white'; // 綠色代表正常/超前
+                                cellBg = 'bg-emerald-500 text-white'; // 正常/超前顯示綠色
                             }
                         }
 
@@ -371,7 +387,7 @@
                         </div>`;
                     });
                 } else {
-                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位，請在表頭加入如 May-26 等欄位）</span>';
+                    matrixHtml += '<span class="text-xs text-gray-400">（未偵測到月份欄位）</span>';
                 }
                 matrixHtml += '</div>';
 
