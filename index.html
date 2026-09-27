@@ -32,1113 +32,246 @@
             --neutral-900: #111827;
         }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            font-family: 'Microsoft YaHei', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px 20px;
         }
 
-        .enterprise-header {
-            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-            box-shadow: 0 4px 20px rgba(30, 64, 175, 0.15);
-        }
-
-        .card-professional {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: all 0.3s ease;
-        }
-
-        .card-professional:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            border-color: #d1d5db;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(30, 64, 175, 0.2);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(30, 64, 175, 0.3);
-        }
-
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            background: #e5e7eb;
-            border-color: #9ca3af;
-        }
-
-        .badge-enterprise {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-primary {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .badge-success {
-            background: #dcfce7;
-            color: #059669;
-        }
-
-        .badge-danger {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .badge-warning {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .table-enterprise {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        .table-enterprise thead {
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-            border-bottom: 2px solid #d1d5db;
-        }
-
-        .table-enterprise th {
-            padding: 16px 18px;
-            text-align: left;
-            font-weight: 600;
-            color: #374151;
-            font-size: 13px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            min-width: 120px;
-        }
-
-        .table-enterprise td {
-            padding: 16px 18px;
-            border-bottom: 1px solid #e5e7eb;
-            color: #111827;
-            min-width: 120px;
-        }
-
-        .table-enterprise tbody tr:hover {
-            background-color: #f9fafb;
-        }
-
-        .input-enterprise {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            background: #ffffff;
-        }
-
-        .input-enterprise:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            background: #ffffff;
-        }
-
-        .input-enterprise:disabled {
-            background: #f3f4f6;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        .modal-enterprise {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            border: 1px solid #e5e7eb;
-        }
-
-        .gantt-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .gantt-card:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
         .progress-section {
-            margin-bottom: 24px;
+            background: white;
+            padding: 40px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
-        .progress-label-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
             margin-bottom: 8px;
         }
 
-        .progress-title {
+        .section-date {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .progress-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 20px;
+        }
+
+        .progress-label {
+            width: 150px;
+            flex-shrink: 0;
+        }
+
+        .progress-label-title {
             font-size: 14px;
             font-weight: 600;
-            color: #111827;
+            color: #333;
+            margin-bottom: 4px;
         }
 
-        .progress-date {
+        .progress-label-date {
             font-size: 12px;
-            color: #6b7280;
-            margin-top: 2px;
+            color: #999;
         }
 
-        .progress-percent {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1e40af;
+        .progress-bar-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
-        .progress-bar-stack {
-            position: relative;
-            height: 56px;
-            background: #f3f4f6;
-            border-radius: 12px;
+        .progress-bar {
+            flex: 1;
+            height: 28px;
+            background: #e5e7eb;
+            border-radius: 4px;
             overflow: hidden;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            position: relative;
         }
 
-        .progress-bar-plan {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 32px;
-            background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);
-            border-radius: 12px 0 0 0;
-            transition: width 0.3s ease;
+        .progress-bar-fill {
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             padding-right: 12px;
             color: white;
-            font-weight: bold;
-            font-size: 11px;
-        }
-
-        .progress-bar-actual {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 20px;
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-            border-radius: 0 0 0 12px;
-            transition: width 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 10px;
-            color: white;
-            font-weight: bold;
-            font-size: 10px;
-        }
-
-        .nav-tab {
-            padding: 12px 20px;
-            border-radius: 8px 8px 0 0;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
-            color: #6b7280;
-        }
-
-        .nav-tab.active {
-            background: white;
-            color: #1e40af;
-            border: 1px solid #e5e7eb;
-            border-bottom: 2px solid #1e40af;
-        }
-
-        .nav-tab:hover:not(.active) {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .divider-enterprise {
-            border-top: 1px solid #e5e7eb;
-            margin: 16px 0;
-        }
-
-        .cell-editable {
-            cursor: pointer;
-            position: relative;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .cell-editable:hover {
-            background: #e0f2fe;
-            border: 1px solid #7dd3fc;
-        }
-
-        .cell-view {
-            word-break: break-word;
-            min-height: 20px;
-        }
-
-        .legend-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 24px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .legend-color {
-            width: 24px;
-            height: 24px;
-            border-radius: 6px;
-        }
-
-        .legend-color-plan {
-            background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);
-        }
-
-        .legend-color-actual {
-            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-        }
-
-        .legend-text {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            color: #374151;
+            border-radius: 4px;
+        }
+
+        .progress-bar-fill.plan {
+            background: linear-gradient(90deg, #0891b2 0%, #06b6d4 100%);
+        }
+
+        .progress-bar-fill.actual {
+            background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+        }
+
+        .progress-percentage {
+            width: 120px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .percentage-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 70px;
+            height: 50px;
+            border: 3px solid #ef4444;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: 700;
+            color: #ef4444;
+            background: white;
+        }
+
+        .toggle-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .toggle-btn {
+            padding: 6px 14px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #f3f4f6;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .toggle-btn:hover {
+            background: #e5e7eb;
+        }
+
+        .toggle-btn.active {
+            background: #059669;
+            color: white;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .progress-section {
+                box-shadow: none;
+                margin-bottom: 20px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- 登入覆蓋遮罩 (預設顯示) -->
-    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="modal-enterprise max-w-md w-full">
-            <div class="bg-gradient-to-br from-blue-600 to-blue-900 text-white px-8 py-12 text-center rounded-t-2xl">
-                <div class="text-5xl mb-3">🏢</div>
-                <h2 class="text-2xl font-bold mb-2">Equipment Expansion</h2>
-                <p class="text-blue-100 text-sm">Enterprise Gantt Chart System</p>
+    <div class="container">
+        <!-- 計畫進度 Section -->
+        <div class="progress-section">
+            <div class="section-title">計畫進度</div>
+            <div class="section-date">2026/01/01 ~ 2026/08/15</div>
+            
+            <div class="progress-row">
+                <div class="progress-label">
+                    <div class="progress-label-title">計畫進度</div>
+                    <div class="progress-label-date">2026/01/01 ~ 2026/08/15</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill plan" style="width: 67%;">67%</div>
+                    </div>
+                    <div class="progress-percentage">
+                        <span class="toggle-options">
+                            <button class="toggle-btn active">計畫進度永遠顯示100%</button>
+                            <button class="toggle-btn">不須顯示</button>
+                        </span>
+                    </div>
+                    <div class="percentage-badge">67%</div>
+                </div>
             </div>
 
-            <div class="px-8 py-8 space-y-6">
-                <div class="space-y-2">
-                    <p class="text-xs text-gray-500 font-semibold uppercase letter-spacing: 1px">Professional Login</p>
-                    <p class="text-sm text-gray-600">使用 Firebase 認證解鎖全部功能</p>
+            <div class="progress-row">
+                <div class="progress-label">
+                    <div class="progress-label-title">實際進度</div>
+                    <div class="progress-label-date">2026/03/01 ~ (施行中)</div>
                 </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">電子郵件 (Email)</label>
-                        <input type="email" id="login-email" class="input-enterprise" placeholder="admin@company.com">
+                <div class="progress-bar-container">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill actual" style="width: 50%;">50%</div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">密碼 (Password)</label>
-                        <input type="password" id="login-pass" class="input-enterprise" placeholder="••••••••">
+                    <div class="progress-percentage">
+                        <span class="toggle-options">
+                            <button class="toggle-btn">不須顯示</button>
+                        </span>
                     </div>
-                    <button onclick="handleLogin()" class="btn-primary w-full">
-                        🔐 登入系統
-                    </button>
-                    <div id="login-error" class="text-sm text-red-600 text-center font-medium hidden bg-red-50 p-3 rounded-lg"></div>
+                    <div class="percentage-badge">50%</div>
                 </div>
+            </div>
+        </div>
 
-                <div class="divider-enterprise"></div>
-
-                <div class="text-center">
-                    <button onclick="enterAsGuest()" class="text-sm text-gray-500 hover:text-gray-700 underline font-medium">
-                        以訪客模式進入 (唯讀)
-                    </button>
+        <!-- 實際進度 Section -->
+        <div class="progress-section">
+            <div class="section-title">實際進度</div>
+            <div class="section-date">2026/03/01 ~ (施行中)</div>
+            
+            <div class="progress-row">
+                <div class="progress-label">
+                    <div class="progress-label-title">實際進度</div>
+                    <div class="progress-label-date">2026/03/01 ~ (施行中)</div>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill actual" style="width: 50%;">50%</div>
+                    </div>
+                    <div class="progress-percentage">
+                        <span class="toggle-options">
+                            <button class="toggle-btn">不須顯示</button>
+                        </span>
+                    </div>
+                    <div class="percentage-badge">50%</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 主應用程式介面 -->
-    <div class="flex flex-col min-h-screen">
-        <!-- 企業級頭部 -->
-        <header class="enterprise-header sticky top-0 z-40">
-            <div class="max-w-7xl mx-auto px-6 py-4">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white rounded-lg p-2 shadow-lg">
-                            <span class="text-2xl">📊</span>
-                        </div>
-                        <div>
-                            <h1 class="text-xl font-bold text-white">Equipment Expansion</h1>
-                            <p class="text-blue-100 text-xs">Enterprise Gantt Chart System</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-6">
-                        <div class="flex items-center space-x-2">
-                            <span class="status-indicator" style="background: #10b981;"></span>
-                            <span id="sync-status" class="text-sm text-blue-100 font-medium">連線中...</span>
-                        </div>
-                        <div class="h-6 w-px bg-blue-400 opacity-50"></div>
-                        <span id="auth-status-badge" class="badge-enterprise badge-warning">🔒 訪客模式</span>
-                        <button id="logout-btn" onclick="handleLogout()" class="hidden badge-enterprise badge-danger cursor-pointer hover:opacity-80">登出</button>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- 分頁與工作表操作 -->
-        <div class="bg-white border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-6 py-0">
-                <div class="flex items-center justify-between">
-                    <div id="sheets-tabs" class="flex items-center space-x-1 overflow-x-auto"></div>
-                    <div id="admin-sheet-controls" class="flex items-center space-x-2 opacity-50 pointer-events-none py-3">
-                        <button onclick="addNewSheet()" class="btn-primary text-sm">+ 新增工作表</button>
-                        <button onclick="deleteCurrentSheet()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition">刪除工作表</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 工具欄 -->
-        <div class="bg-gray-50 border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-6 py-4">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center space-x-3">
-                        <label id="import-file-label" class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-2 font-medium select-none">
-                            📁 匯入 Excel 
-                            <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls, .csv" disabled onchange="importExcel(event)">
-                        </label>
-                        <button onclick="exportExcel()" class="btn-primary text-sm flex items-center gap-2">
-                            📥 匯出 Excel
-                        </button>
-                    </div>
-                    <div class="text-xs text-gray-500 font-medium">
-                        💾 已自動保存至雲端
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 主內容區 -->
-        <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
-            <!-- 資料表格編輯區 -->
-            <div class="card-professional p-6 opacity-65 pointer-events-none transition" id="table-container-wrapper">
-                <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 id="current-sheet-title" class="text-lg font-bold text-gray-900">工作表名稱</h3>
-                        <p class="text-xs text-gray-500 mt-1">編輯與管理設備擴張排程資料 (雙擊單元格編輯)</p>
-                    </div>
-                    <div class="space-x-2">
-                        <button onclick="addColumn()" class="btn-primary text-sm">+ 新增欄位</button>
-                        <button onclick="addRow()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition">+ 新增列位</button>
-                    </div>
-                </div>
-                <div class="overflow-x-auto border rounded-lg border-gray-200">
-                    <table id="data-table" class="table-enterprise"></table>
-                </div>
-            </div>
-
-            <!-- 甘特圖預覽區 -->
-            <div id="gantt-export-area" class="card-professional p-6">
-                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900">📈 進度甘特圖</h3>
-                        <p class="text-xs text-gray-500 mt-1">計畫與實際進度對比分析</p>
-                    </div>
-                    
-                    <button id="export-btn" onclick="exportGanttPNG()" class="btn-primary text-sm flex items-center gap-2">
-                        📸 匯出為圖片
-                    </button>
-                </div>
-
-                <!-- 圖例 -->
-                <div class="legend-container">
-                    <div class="legend-item">
-                        <div class="legend-color legend-color-plan"></div>
-                        <span class="legend-text">計畫進度 (粗條)</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color legend-color-actual"></div>
-                        <span class="legend-text">實際進度 (細條)</span>
-                    </div>
-                </div>
-
-                <div id="gantt-container" class="space-y-8"></div>
-            </div>
-        </main>
-
-        <!-- 頁尾 -->
-        <footer class="bg-gray-900 text-gray-400 py-6 border-t border-gray-800 mt-12">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="flex justify-between items-center text-xs">
-                    <div>
-                        <p class="font-semibold text-gray-300">Equipment Expansion Gantt Chart</p>
-                        <p>Enterprise Edition v1.0 | Powered by Firebase</p>
-                    </div>
-                    <div class="text-right">
-                        <p>© 2024 All Rights Reserved</p>
-                    </div>
-                </div>
-            </div>
-        </footer>
-    </div>
-
-    <!-- 編輯模態框 -->
-    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
-        <div class="modal-enterprise max-w-sm w-full">
-            <div class="px-8 py-6 border-b border-gray-200">
-                <h3 class="text-lg font-bold text-gray-900">編輯單元格</h3>
-            </div>
-            <div class="px-8 py-6">
-                <input type="text" id="edit-input" class="input-enterprise text-base" placeholder="輸入內容">
-            </div>
-            <div class="px-8 py-4 bg-gray-50 border-t border-gray-200 flex gap-3 justify-end rounded-b-2xl">
-                <button onclick="cancelEdit()" class="btn-secondary">取消</button>
-                <button onclick="saveEdit()" class="btn-primary">保存</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 邏輯腳本 -->
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
-            authDomain: "equipmentexpansionganttchart.firebaseapp.com",
-            databaseURL: "https://equipmentexpansionganttchart-default-rtdb.firebaseio.com",
-            projectId: "equipmentexpansionganttchart",
-            storageBucket: "equipmentexpansionganttchart.firebasestorage.app",
-            messagingSenderId: "357406784955",
-            appId: "1:357406784955:web:e3661233994a32196e589e",
-            measurementId: "G-HYXNC4YZ19"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const rtdb = firebase.database();
-
-        let appData = { sheets: [] };
-        let currentSheetIndex = 0;
-        let isLoggedIn = false;
-        let editingCell = null;
-
-        window.addEventListener('DOMContentLoaded', () => {
-            auth.onAuthStateChanged((user) => {
-                isLoggedIn = !!user;
-                updateUIPermissions();
-            });
-            loadFromCloud();
-        });
-
-        function formatDateClean(val) {
-            if (!val) return "";
-            const str = String(val).trim();
-            const d = new Date(str);
-            if (!isNaN(d.getTime()) && (str.includes("GMT") || str.includes("T") || str.length > 10)) {
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                if (year >= 2000 && year <= 2100) {
-                    return `${year}/${month}/${day}`;
-                }
-            }
-            return str;
-        }
-
-        function formatHeaderClean(val) {
-            if (!val) return "";
-            const str = String(val).trim();
-            const d = new Date(str);
-            if (!isNaN(d.getTime()) && (str.includes("GMT") || str.includes("T") || str.length > 10)) {
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                if (year >= 2000 && year <= 2100) {
-                    return `${year}/${month}/${day}`;
-                }
-            }
-            return str;
-        }
-
-        function handleLogin() {
-            const email = document.getElementById('login-email').value.trim();
-            const pass = document.getElementById('login-pass').value.trim();
-            const errEl = document.getElementById('login-error');
-
-            if (!email || !pass) {
-                errEl.innerText = "請輸入電子郵件與密碼！";
-                errEl.classList.remove('hidden');
-                return;
-            }
-
-            auth.signInWithEmailAndPassword(email, pass)
-                .then(() => {
-                    document.getElementById('login-modal').classList.add('hidden');
-                    errEl.classList.add('hidden');
-                })
-                .catch((error) => {
-                    console.error(error);
-                    errEl.innerText = "登入失敗：請確認 Email 與密碼是否正確。";
-                    errEl.classList.remove('hidden');
-                });
-        }
-
-        function enterAsGuest() {
-            document.getElementById('login-modal').classList.add('hidden');
-            updateUIPermissions();
-        }
-
-        function handleLogout() {
-            auth.signOut().then(() => {
-                document.getElementById('login-email').value = "";
-                document.getElementById('login-pass').value = "";
-                document.getElementById('login-modal').classList.remove('hidden');
-                updateUIPermissions();
-            });
-        }
-
-        function updateUIPermissions() {
-            const badge = document.getElementById('auth-status-badge');
-            const logoutBtn = document.getElementById('logout-btn');
-            const adminSheetControls = document.getElementById('admin-sheet-controls');
-            const importLabel = document.getElementById('import-file-label');
-            const fileInput = document.getElementById('excel-file-input');
-            const tableWrapper = document.getElementById('table-container-wrapper');
-
-            if (isLoggedIn) {
-                badge.className = "badge-enterprise badge-success";
-                badge.innerText = "🔓 管理者模式";
-                logoutBtn.classList.remove('hidden');
-                
-                adminSheetControls.classList.remove('opacity-50', 'pointer-events-none');
-                importLabel.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 font-medium";
-                fileInput.disabled = false;
-                tableWrapper.classList.remove('opacity-65', 'pointer-events-none');
-            } else {
-                badge.className = "badge-enterprise badge-warning";
-                badge.innerText = "🔒 訪客模式";
-                logoutBtn.classList.add('hidden');
-
-                adminSheetControls.classList.add('opacity-50', 'pointer-events-none');
-                importLabel.className = "bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-2 font-medium select-none";
-                fileInput.disabled = true;
-                tableWrapper.classList.add('opacity-65', 'pointer-events-none');
-            }
-        }
-
-        function loadFromCloud() {
-            const statusEl = document.getElementById('sync-status');
-            rtdb.ref('ganttSystem/mainData').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data && data.sheets) {
-                    appData = data;
-                    appData.sheets.forEach(sheet => {
-                        if (!sheet.notes) sheet.notes = {};
-                        sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
-                        sheet.rows.forEach(row => {
-                            if (row.length > 4) {
-                                row[4] = formatDateClean(row[4]);
-                                row[5] = formatDateClean(row[5]);
-                            }
-                        });
+        // 切換按鈕的交互邏輯
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // 移除同一個進度列中的其他按鈕的 active 狀態
+                const container = this.closest('.progress-bar-container');
+                if (container) {
+                    container.querySelectorAll('.toggle-btn').forEach(b => {
+                        b.classList.remove('active');
                     });
-                    statusEl.className = "text-sm text-blue-100 font-medium";
-                    statusEl.innerText = "✅ 已連線";
-                } else {
-                    appData = {
-                        sheets: [{
-                            name: "機台擴張排程 #1",
-                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01"],
-                            rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "2026/05/20", "", "", "", "1", "1", "1"]
-                            ],
-                            notes: {}
-                        }]
-                    };
-                    saveToCloud();
                 }
-                renderApp();
+                this.classList.add('active');
             });
-        }
-
-        function saveToCloud() {
-            if (!isLoggedIn) return;
-            rtdb.ref('ganttSystem/mainData').set(appData);
-        }
-
-        function renderApp() {
-            renderSheetsTabs();
-            renderTable();
-            renderGanttChart();
-        }
-
-        function renderSheetsTabs() {
-            const container = document.getElementById('sheets-tabs');
-            container.innerHTML = '';
-            appData.sheets.forEach((sheet, idx) => {
-                const btn = document.createElement('button');
-                btn.className = `nav-tab ${idx === currentSheetIndex ? 'active' : ''}`;
-                btn.innerText = sheet.name;
-                btn.onclick = () => { currentSheetIndex = idx; renderApp(); };
-                if (isLoggedIn) {
-                    btn.ondblclick = () => {
-                        const newName = prompt("重新命名工作表：", sheet.name);
-                        if (newName && newName.trim() !== "") {
-                            sheet.name = newName.trim();
-                            saveToCloud();
-                            renderApp();
-                        }
-                    };
-                }
-                container.appendChild(btn);
-            });
-            document.getElementById('current-sheet-title').innerText = appData.sheets[currentSheetIndex].name;
-        }
-
-        function addNewSheet() {
-            if (!isLoggedIn) return;
-            const name = prompt("請輸入新工作表名稱：", `工作表 ${appData.sheets.length + 1}`);
-            if (!name) return;
-            appData.sheets.push({
-                name: name.trim(),
-                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]],
-                notes: {}
-            });
-            currentSheetIndex = appData.sheets.length - 1;
-            saveToCloud();
-            renderApp();
-        }
-
-        function deleteCurrentSheet() {
-            if (!isLoggedIn) return;
-            if (appData.sheets.length <= 1) {
-                alert("至少需要保留一個工作表！");
-                return;
-            }
-            if (confirm(`確定要刪除工作表「${appData.sheets[currentSheetIndex].name}」嗎？`)) {
-                appData.sheets.splice(currentSheetIndex, 1);
-                currentSheetIndex = Math.max(0, currentSheetIndex - 1);
-                saveToCloud();
-                renderApp();
-            }
-        }
-
-        function startEdit(rIdx, cIdx, currentValue) {
-            if (!isLoggedIn) return;
-            editingCell = { rIdx, cIdx };
-            document.getElementById('edit-input').value = currentValue;
-            document.getElementById('edit-modal').classList.remove('hidden');
-            setTimeout(() => document.getElementById('edit-input').focus(), 100);
-        }
-
-        function saveEdit() {
-            if (!editingCell) return;
-            const newValue = document.getElementById('edit-input').value;
-            const { rIdx, cIdx } = editingCell;
-            
-            let processedValue = newValue;
-            if (cIdx === 4 || cIdx === 5) {
-                processedValue = formatDateClean(newValue);
-            }
-            
-            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = processedValue;
-            saveToCloud();
-            renderApp();
-            cancelEdit();
-        }
-
-        function cancelEdit() {
-            editingCell = null;
-            document.getElementById('edit-modal').classList.add('hidden');
-        }
-
-        document.addEventListener('keydown', (e) => {
-            if (editingCell) {
-                if (e.key === 'Enter') saveEdit();
-                if (e.key === 'Escape') cancelEdit();
-            }
         });
-
-        function renderTable() {
-            const sheet = appData.sheets[currentSheetIndex];
-            const table = document.getElementById('data-table');
-            let html = '<thead><tr>';
-            
-            sheet.columns.forEach((col, cIdx) => {
-                html += `<th>
-                    <div class="flex items-center space-x-1 justify-between">
-                        <span class="font-semibold text-gray-700">${col}</span>
-                        ${isLoggedIn ? `<button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1 font-bold">✕</button>` : ''}
-                    </div>
-                </th>`;
-            });
-            if (isLoggedIn) html += '<th class="text-center">操作</th>';
-            html += '</tr></thead>';
-            
-            html += '<tbody>';
-            sheet.rows.forEach((row, rIdx) => {
-                html += '<tr>';
-                sheet.columns.forEach((_, cIdx) => {
-                    const val = row[cIdx] !== undefined ? row[cIdx] : '';
-                    html += `<td>
-                        <div class="cell-editable" ondblclick="startEdit(${rIdx}, ${cIdx}, '${val.replace(/'/g, "\\'")}')">
-                            <div class="cell-view">${val || '<span class="text-gray-400">-</span>'}</div>
-                        </div>
-                    </td>`;
-                });
-                if (isLoggedIn) {
-                    html += `<td class="text-center">
-                        <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-bold px-2 py-1 bg-red-50 rounded hover:bg-red-100">刪除</button>
-                    </td>`;
-                }
-                html += '</tr>';
-            });
-            html += '</tbody>';
-            table.innerHTML = html;
-        }
-
-        function updateColumnName(cIdx, val) {
-            if (!isLoggedIn) return;
-            appData.sheets[currentSheetIndex].columns[cIdx] = formatHeaderClean(val);
-            saveToCloud();
-            renderApp();
-        }
-
-        function updateCellInstant(rIdx, cIdx, val) {
-            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
-            renderGanttChart();
-        }
-
-        function updateCell(rIdx, cIdx, val) {
-            if (!isLoggedIn) return;
-            if (cIdx === 4 || cIdx === 5) {
-                val = formatDateClean(val);
-            }
-            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
-            saveToCloud();
-            renderApp();
-        }
-
-        function updateMachineNote(machineKey, val) {
-            if (!isLoggedIn) return;
-            const sheet = appData.sheets[currentSheetIndex];
-            if (!sheet.notes) sheet.notes = {};
-            sheet.notes[machineKey] = val;
-            saveToCloud();
-        }
-
-        function addColumn() {
-            if (!isLoggedIn) return;
-            const colName = prompt("請輸入新欄位名稱 (例如 2026/01/01)：", "2026/01/01");
-            if (!colName) return;
-            appData.sheets[currentSheetIndex].columns.push(formatHeaderClean(colName));
-            appData.sheets[currentSheetIndex].rows.forEach(row => row.push(""));
-            saveToCloud();
-            renderApp();
-        }
-
-        function deleteColumn(cIdx) {
-            if (!isLoggedIn) return;
-            if (appData.sheets[currentSheetIndex].columns.length <= 1) {
-                alert("至少需要保留一個欄位！");
-                return;
-            }
-            appData.sheets[currentSheetIndex].columns.splice(cIdx, 1);
-            appData.sheets[currentSheetIndex].rows.forEach(row => row.splice(cIdx, 1));
-            saveToCloud();
-            renderApp();
-        }
-
-        function addRow() {
-            if (!isLoggedIn) return;
-            const emptyRow = new Array(appData.sheets[currentSheetIndex].columns.length).fill("");
-            appData.sheets[currentSheetIndex].rows.push(emptyRow);
-            saveToCloud();
-            renderApp();
-        }
-
-        function deleteRow(rIdx) {
-            if (!isLoggedIn) return;
-            appData.sheets[currentSheetIndex].rows.splice(rIdx, 1);
-            saveToCloud();
-            renderApp();
-        }
-
-        function calculateProgressFromMonths(row, sheet) {
-            // 計算進度：根據月份欄位中有勾選(1)的數量 / 總月份數
-            if (!row || row.length < 7) return 0;
-            
-            // 從第7個欄位開始是月份欄位 (0-6是基本欄位：部門、課別、機台、類別、開始、結束、之後是月份)
-            let checkedMonths = 0;
-            let totalMonths = 0;
-            
-            for (let i = 6; i < row.length; i++) {
-                const val = String(row[i] || '').trim();
-                // 檢查是否是月份欄位（對應的列頭應該包含日期格式）
-                if (i < sheet.columns.length) {
-                    const colHeader = sheet.columns[i];
-                    if (colHeader && (colHeader.includes('/') || colHeader.includes('-'))) {
-                        totalMonths++;
-                        if (val === '1') {
-                            checkedMonths++;
-                        }
-                    }
-                }
-            }
-            
-            if (totalMonths === 0) return 0;
-            return Math.round((checkedMonths / totalMonths) * 100);
-        }
-
-        function renderGanttChart() {
-            const sheet = appData.sheets[currentSheetIndex];
-            const container = document.getElementById('gantt-container');
-            container.innerHTML = '';
-
-            const machineMap = {};
-            sheet.rows.forEach(row => {
-                const dept = row[0] || '';
-                const clazz = row[1] || '';
-                const machine = row[2] || '未命名機台';
-                const key = `${dept}_${clazz}_${machine}`;
-                if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, items: [], keyName: key };
-                }
-                machineMap[key].items.push(row);
-            });
-
-            if (!sheet.notes) sheet.notes = {};
-
-            Object.values(machineMap).forEach(group => {
-                const div = document.createElement('div');
-                div.className = 'gantt-card';
-                
-                let headerInfo = `<div class="flex items-center justify-between flex-wrap gap-3 mb-6 pb-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <span class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg text-xs font-bold">${group.dept}</span>
-                        <span class="text-gray-400">/</span>
-                        <span class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg text-xs font-bold">${group.clazz}</span>
-                        <span class="text-gray-400">/</span>
-                        <span class="text-blue-600 text-base font-bold">${group.machine}</span>
-                    </div>
-                </div>`;
-                
-                let planItem = null;
-                let actualItem = null;
-
-                group.items.forEach(row => {
-                    const type = String(row[3] || '');
-                    if (type.includes('計畫')) planItem = row;
-                    else if (type.includes('實際')) actualItem = row;
-                });
-
-                let planStart = planItem ? formatDateClean(planItem[4]) : '';
-                let planEnd = planItem ? formatDateClean(planItem[5]) : '';
-                let actualStart = actualItem ? formatDateClean(actualItem[4]) : '';
-                let actualEnd = actualItem ? formatDateClean(actualItem[5]) : '';
-
-                // 根據月份勾選計算進度百分比
-                let planProgress = planItem ? calculateProgressFromMonths(planItem, sheet) : 0;
-                let actualProgress = actualItem ? calculateProgressFromMonths(actualItem, sheet) : 0;
-
-                let contentHtml = `<div class="space-y-6">
-                    <!-- 計畫進度 -->
-                    <div class="progress-section">
-                        <div class="progress-label-row">
-                            <div>
-                                <div class="progress-title">計畫進度</div>
-                                <div class="progress-date">${planStart} ~ ${planEnd}</div>
-                            </div>
-                            <div class="progress-percent">${planProgress}%</div>
-                        </div>
-                        
-                        <!-- 進度條堆疊 -->
-                        <div class="progress-bar-stack">
-                            <div class="progress-bar-plan" style="width: ${planProgress}%;">
-                                ${planProgress > 15 ? planProgress + '%' : ''}
-                            </div>
-                            ${actualItem ? `
-                            <div class="progress-bar-actual" style="width: ${actualProgress}%;">
-                                ${actualProgress > 10 ? actualProgress + '%' : ''}
-                            </div>
-                            ` : ''}
-                        </div>
-                    </div>
-
-                    ${actualItem ? `
-                    <!-- 實際進度 (單獨顯示) -->
-                    <div class="progress-section">
-                        <div class="progress-label-row">
-                            <div>
-                                <div class="progress-title">實際進度</div>
-                                <div class="progress-date">${actualStart} ${actualEnd ? '~ ' + actualEnd : '~ (進行中)'}</div>
-                            </div>
-                            <div class="progress-percent">${actualProgress}%</div>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>`;
-
-                const currentNote = sheet.notes[group.keyName] || '';
-                let noteHtml = `<div class="mt-6 pt-6 border-t border-gray-200">
-                    <label class="block text-xs font-bold text-gray-600 mb-2 uppercase letter-spacing: 0.5px">📝 備註與說明</label>
-                    <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="輸入備註內容..." class="input-enterprise text-sm">
-                </div>`;
-
-                contentHtml += noteHtml;
-                div.innerHTML = headerInfo + contentHtml;
-                container.appendChild(div);
-            });
-        }
-
-        function exportGanttPNG() {
-            const element = document.getElementById('gantt-export-area');
-            const exportBtn = document.getElementById('export-btn');
-            
-            exportBtn.style.display = 'none';
-
-            const noteInputs = element.querySelectorAll('input[data-note-input="true"]');
-            const replacementMap = [];
-
-            noteInputs.forEach(input => {
-                const div = document.createElement('div');
-                div.className = input.className + " flex items-center bg-white overflow-hidden";
-                div.style.height = input.offsetHeight + "px";
-                div.style.minHeight = "28px";
-                div.style.lineHeight = "normal";
-                div.style.padding = "4px 12px";
-                div.style.boxSizing = "border-box";
-                div.innerText = input.value || input.placeholder;
-                if (!input.value) {
-                    div.style.color = "#9ca3af";
-                } else {
-                    div.style.color = "#1f2937";
-                }
-                input.style.display = 'none';
-                input.parentNode.insertBefore(div, input);
-                replacementMap.push({ input, div });
-            });
-
-            html2canvas(element, { 
-                scale: 2, 
-                useCORS: true,
-                logging: false,
-                windowWidth: element.scrollWidth
-            }).then(canvas => {
-                replacementMap.forEach(item => {
-                    item.input.style.display = '';
-                    item.div.remove();
-                });
-
-                exportBtn.style.display = 'inline-block';
-                const link = document.createElement('a');
-                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖-${new Date().toISOString().slice(0,10)}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-            }).catch(err => {
-                console.error(err);
-                replacementMap.forEach(item => {
-                    item.input.style.display = '';
-                    item.div.remove();
-                });
-                exportBtn.style.display = 'inline-block';
-            });
-        }
-
-        function exportExcel() {
-            const wb = XLSX.utils.book_new();
-            appData.sheets.forEach(sheet => {
-                const wsData = [sheet.columns, ...sheet.rows];
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                XLSX.utils.book_append_sheet(wb, ws, sheet.name);
-            });
-            XLSX.writeFile(wb, `Equipment-Expansion-Gantt-${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
-
-        function importExcel(event) {
-            if (!isLoggedIn) return;
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
-                const newSheets = [];
-                workbook.SheetNames.forEach(sheetName => {
-                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "" });
-                    if (json && json.length > 0) {
-                        let hIdx = json.findIndex(row => row.some(cell => cell !== ""));
-                        if (hIdx === -1) return;
-                        
-                        const columns = json[hIdx].map(c => formatHeaderClean(c)).filter(c => c !== "");
-                        const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => {
-                            return columns.map((_, i) => {
-                                let val = row[i] !== undefined ? row[i] : "";
-                                if (i === 4 || i === 5) {
-                                    val = formatDateClean(val);
-                                }
-                                return String(val);
-                            });
-                        });
-                        
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
-                    }
-                });
-                if (newSheets.length > 0) {
-                    appData.sheets = newSheets;
-                    currentSheetIndex = 0;
-                    saveToCloud();
-                    renderApp();
-                    alert("🎉 Excel 匯入成功！");
-                }
-            };
-            reader.readAsBinaryString(file);
-        }
     </script>
 </body>
 </html>
