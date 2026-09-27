@@ -92,16 +92,16 @@
                 </div>
             </div>
 
-            <!-- 甘特圖預覽區 (傳統橫條圖風格) -->
+            <!-- 甘特圖預覽區 (緊湊直落式風格) -->
             <div id="gantt-export-area" class="bg-white rounded-xl shadow-sm border p-6 relative">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
                     <h3 class="text-base font-bold text-gray-800">📈 甘特圖時間軸預覽</h3>
                     <div class="flex items-center space-x-4 flex-wrap gap-2">
                         <div class="flex items-center space-x-3 text-xs bg-gray-50 px-3 py-1.5 rounded-lg border">
-                            <span class="flex items-center"><span class="w-3 h-3 bg-amber-400 inline-block mr-1 rounded"></span>計畫 / 進行中</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-cyan-500 inline-block mr-1 rounded"></span>已完成</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-amber-400 inline-block mr-1 rounded"></span>計畫</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>落後</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-cyan-500 inline-block mr-1 rounded"></span>完成</span>
                         </div>
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
@@ -393,14 +393,6 @@
             renderApp();
         }
 
-        function updateMachineNote(machineKey, val) {
-            if (!isLoggedIn) return;
-            const sheet = appData.sheets[currentSheetIndex];
-            if (!sheet.notes) sheet.notes = {};
-            sheet.notes[machineKey] = val;
-            saveToCloud();
-        }
-
         function addColumn() {
             if (!isLoggedIn) return;
             const colName = prompt("請輸入新欄位名稱：", "欄位");
@@ -438,7 +430,7 @@
             renderApp();
         }
 
-        // 渲染傳統橫條甘特圖
+        // 渲染緊湊直落式甘特圖
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -458,18 +450,16 @@
                 const machine = row[2] || '未命名機台';
                 const key = `${dept}_${clazz}_${machine}`;
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, items: [], keyName: key };
+                    machineMap[key] = { dept, clazz, machine, items: [] };
                 }
                 machineMap[key].items.push(row);
             });
-
-            if (!sheet.notes) sheet.notes = {};
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
                 <table class="w-full border-collapse text-xs min-w-[900px]">
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-64">任務 / 機台</th>
+                            <th class="py-2.5 px-4 text-left border-r w-64">項目 / 資訊</th>
                             <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">01</th>
                             <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">02</th>
                             <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">03</th>
@@ -505,7 +495,7 @@
                     else if (type.includes('實際')) actualItem = row;
                 });
 
-                const renderBarRow = (item, labelText, defaultColor) => {
+                const renderBar = (item, labelText, defaultColor) => {
                     if (!item) return '';
                     const startVal = item[4] || '';
                     const endVal = item[5] || '';
@@ -519,37 +509,37 @@
                     else if (typeStr.includes('完成')) barColor = 'bg-cyan-500';
                     else if (typeStr.includes('實際')) barColor = 'bg-emerald-500';
 
-                    return `<div class="relative h-6 flex items-center my-1">
+                    return `<div class="relative h-5 flex items-center my-0.5">
                         <div class="absolute h-4 rounded-full ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
                             <span class="truncate">${labelText}</span>
                         </div>
                     </div>`;
                 };
 
+                // 將任務名稱與對應的計畫/實際長條直接在同一列中呈現
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
-                    <td class="py-3 px-4 border-r align-top">
+                    <td class="py-3 px-4 border-r align-middle w-64">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
+                // 畫 12 個月份的背景網格線，並在儲存格內直接放入進度條容器
                 months.forEach(() => {
-                    tableHtml += `<td class="border-r border-gray-100 p-0"></td>`;
+                    tableHtml += `<td class="border-r border-gray-100 p-0 relative"></td>`;
                 });
                 tableHtml += `</tr>`;
 
-                // 畫 bar 所在的疊加列
-                tableHtml += `<tr class="border-b bg-gray-50/30">
-                    <td class="py-2 px-4 border-r text-right text-xs text-gray-400 font-medium">進度條</td>
-                    <td colspan="12" class="px-2 relative">
+                // 緊接著的長條融合列
+                tableHtml += `<tr class="border-b bg-gray-50/20">
+                    <td class="py-1 px-4 border-r text-right text-[11px] text-gray-400 font-medium">進度條</td>
+                    <td colspan="12" class="px-2 relative py-1">
                         <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
-                    tableHtml += `<div class="border-r border-gray-200/60 h-full"></div>`;
+                    tableHtml += `<div class="border-r border-gray-200/50 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                        <div class="py-1">
-                            ${renderBarRow(planItem, '計畫', 'bg-amber-400')}
-                            ${renderBarRow(actualItem, '實際', 'bg-emerald-500')}
-                        </div>
+                        ${renderBar(planItem, '計畫', 'bg-amber-400')}
+                        ${renderBar(actualItem, '實際', 'bg-emerald-500')}
                     </td>
                 </tr>`;
             });
@@ -571,7 +561,7 @@
             }).then(canvas => {
                 exportBtn.style.display = 'inline-block';
                 const link = document.createElement('a');
-                link.download = `${appData.sheets[currentSheetIndex].name}-傳統甘特圖.png`;
+                link.download = `${appData.sheets[currentSheetIndex].name}-緊湊甘特圖.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             }).catch(err => {
