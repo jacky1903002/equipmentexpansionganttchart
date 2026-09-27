@@ -548,8 +548,9 @@
                         labelText = '計畫';
                     }
 
-                    return `<div class="absolute ${topClass} h-3.5 rounded-full ${barColor} shadow-sm flex items-center px-1.5 text-[9px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="truncate">${labelText}</span>
+                    // 修改：將文字移至 Bar 上方或採用更清楚的呈現，避免被 Bar 高度裁切
+                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-bold overflow-visible" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
                     </div>`;
                 };
 
@@ -559,14 +560,14 @@
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                tableHtml += `<td colspan="12" class="p-0 relative h-12">
+                tableHtml += `<td colspan="12" class="p-0 relative h-16">
                     <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
                     ${renderBar(planItem, 'bg-amber-400', 'top-1')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-6')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-9')}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -667,8 +668,8 @@
                         labelText = 'Plan';
                     }
 
-                    return `<div class="absolute ${topClass} h-3.5 rounded-full ${barColor} shadow-sm flex items-center px-1.5 text-[9px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="truncate">${labelText}</span>
+                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-bold overflow-visible" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
                     </div>`;
                 };
 
@@ -678,14 +679,14 @@
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                tableHtml += `<td colspan="12" class="p-0 relative h-12">
+                tableHtml += `<td colspan="12" class="p-0 relative h-16">
                     <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
                     ${renderBar(planItem, 'bg-amber-400', 'top-1')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-6')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-9')}
                 </td>`;
 
                 tableHtml += `</tr>`;
