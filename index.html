@@ -253,6 +253,11 @@
                     appData = data;
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
+                        // 確保預設欄位包含備註 (第7欄，索引6)
+                        if (sheet.columns.length < 7) {
+                            sheet.columns.push("備註");
+                            sheet.rows.forEach(row => { if (row.length < 7) row.push(""); });
+                        }
                         sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
                         sheet.rows.forEach(row => {
                             if (row.length > 4) {
@@ -267,10 +272,10 @@
                     appData = {
                         sheets: [{
                             name: "機台擴張排程",
-                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
+                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "備註"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026-01-05", "2026-04-15"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "進行中", "2026-03-01", "2026-09-15"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026-01-05", "2026-04-15", "首季預計交機"],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "進行中", "2026-03-01", "2026-09-15", "已完成基礎安裝"]
                             ],
                             notes: {}
                         }]
@@ -321,8 +326,8 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026-01-01", "2026-03-31"]],
+                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "備註"],
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026-01-01", "2026-03-31", ""]],
                 notes: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
@@ -500,13 +505,15 @@
                 group.items.forEach(row => {
                     const type = String(row[3] || '');
                     if (type.includes('計畫')) planItem = row;
-                    else if (type.includes('進行中') || type.includes('進行中')) activeItem = row;
+                    else if (type.includes('進行中') || type.includes('實際')) activeItem = row;
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
                     if (!item) return '';
                     const startVal = item[4] || '';
                     const endVal = item[5] || '';
+                    const remarkVal = item[6] || ''; // 取得表格中的備註文字 (假設放在第7欄，索引6)
+                    
                     const startPct = dateToPercent(startVal);
                     const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 15);
                     const widthPct = Math.max(3, endPct - startPct);
@@ -521,7 +528,7 @@
                     } else if (typeStr.includes('已完成') || typeStr.includes('完成')) {
                         barColor = 'bg-cyan-500';
                         labelText = '已完成';
-                    } else if (typeStr.includes('進行中') || typeStr.includes('進行中')) {
+                    } else if (typeStr.includes('進行中') || typeStr.includes('實際')) {
                         barColor = 'bg-emerald-500';
                         labelText = '進行中';
                     } else if (typeStr.includes('計畫')) {
@@ -529,8 +536,12 @@
                         labelText = '計畫';
                     }
 
-                    return `<div class="absolute ${topClass} h-3.5 rounded-full ${barColor} shadow-sm flex items-center px-1.5 text-[9px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="truncate">${labelText}</span>
+                    // 結合 Bar 本身與後方顯示的備註文字
+                    return `<div class="absolute ${topClass} flex items-center" style="left: ${startPct}%;">
+                        <div class="h-3.5 rounded-full ${barColor} shadow-sm flex items-center px-1.5 text-[9px] text-white font-semibold truncate" style="width: ${widthPct}%;">
+                            <span class="truncate">${labelText}</span>
+                        </div>
+                        ${remarkVal ? `<span class="ml-1.5 text-[10px] text-gray-600 font-medium whitespace-nowrap bg-gray-50 px-1 rounded border border-gray-200 shadow-2xs">${remarkVal}</span>` : ''}
                     </div>`;
                 };
 
