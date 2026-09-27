@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Equipment Expansion Gantt Chart - Enterprise Edition</title>
+    <title>機台擴張甘特圖管理系統 - 雲端授權版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS -->
@@ -15,428 +15,100 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-    
-    <style>
-        :root {
-            --primary: #1e40af;
-            --primary-light: #3b82f6;
-            --primary-dark: #1e3a8a;
-            --accent: #0891b2;
-            --success: #059669;
-            --warning: #d97706;
-            --danger: #dc2626;
-            --neutral-50: #f9fafb;
-            --neutral-100: #f3f4f6;
-            --neutral-200: #e5e7eb;
-            --neutral-700: #374151;
-            --neutral-900: #111827;
-        }
-
-        body {
-            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .enterprise-header {
-            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-            box-shadow: 0 4px 20px rgba(30, 64, 175, 0.15);
-        }
-
-        .enterprise-sidebar {
-            background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
-            border-right: 1px solid #e5e7eb;
-        }
-
-        .card-professional {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: all 0.3s ease;
-        }
-
-        .card-professional:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            border-color: #d1d5db;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(30, 64, 175, 0.2);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(30, 64, 175, 0.3);
-        }
-
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            background: #e5e7eb;
-            border-color: #9ca3af;
-        }
-
-        .badge-enterprise {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .badge-primary {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .badge-success {
-            background: #dcfce7;
-            color: #059669;
-        }
-
-        .badge-danger {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .badge-warning {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .table-enterprise {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        .table-enterprise thead {
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-            border-bottom: 2px solid #d1d5db;
-        }
-
-        .table-enterprise th {
-            padding: 14px;
-            text-align: left;
-            font-weight: 600;
-            color: #374151;
-            font-size: 13px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .table-enterprise td {
-            padding: 12px 14px;
-            border-bottom: 1px solid #e5e7eb;
-            color: #111827;
-        }
-
-        .table-enterprise tbody tr:hover {
-            background-color: #f9fafb;
-        }
-
-        .input-enterprise {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            background: #ffffff;
-        }
-
-        .input-enterprise:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            background: #ffffff;
-        }
-
-        .input-enterprise:disabled {
-            background: #f3f4f6;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        .modal-enterprise {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            border: 1px solid #e5e7eb;
-        }
-
-        .gantt-card {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .gantt-card:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-        }
-
-        .gantt-status-planned {
-            background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
-            border: 1px solid #06b6d4;
-            color: #0c4a6e;
-        }
-
-        .gantt-status-on-track {
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            border: 1px solid #059669;
-            color: #065f46;
-        }
-
-        .gantt-status-delayed {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border: 1px solid #dc2626;
-            color: #7f1d1d;
-        }
-
-        .gantt-status-completed {
-            background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
-            border: 1px solid #9333ea;
-            color: #581c87;
-        }
-
-        .nav-tab {
-            padding: 12px 20px;
-            border-radius: 8px 8px 0 0;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
-            color: #6b7280;
-        }
-
-        .nav-tab.active {
-            background: white;
-            color: #1e40af;
-            border: 1px solid #e5e7eb;
-            border-bottom: 2px solid #1e40af;
-        }
-
-        .nav-tab:hover:not(.active) {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        .divider-enterprise {
-            border-top: 1px solid #e5e7eb;
-            margin: 16px 0;
-        }
-    </style>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen font-sans antialiased relative">
+
     <!-- 登入覆蓋遮罩 (預設顯示) -->
-    <div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="modal-enterprise max-w-md w-full">
-            <div class="bg-gradient-to-br from-blue-600 to-blue-900 text-white px-8 py-12 text-center rounded-t-2xl">
-                <div class="text-5xl mb-3">🏢</div>
-                <h2 class="text-2xl font-bold mb-2">Equipment Expansion</h2>
-                <p class="text-blue-100 text-sm">Enterprise Gantt Chart System</p>
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-6">
+            <div class="text-center space-y-2">
+                <span class="text-4xl">🔐</span>
+                <h2 class="text-xl font-bold text-gray-800">系統登入驗證</h2>
+                <p class="text-xs text-gray-500">請輸入 Firebase 電子郵件與密碼以解鎖編輯功能</p>
             </div>
-
-            <div class="px-8 py-8 space-y-6">
-                <div class="space-y-2">
-                    <p class="text-xs text-gray-500 font-semibold uppercase letter-spacing: 1px">Professional Login</p>
-                    <p class="text-sm text-gray-600">使用 Firebase 認證解鎖全部功能</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">電子郵件 (Email)</label>
+                    <input type="email" id="login-email" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="name@example.com">
                 </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">電子郵件 (Email)</label>
-                        <input type="email" id="login-email" class="input-enterprise" placeholder="admin@company.com">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">密碼 (Password)</label>
-                        <input type="password" id="login-pass" class="input-enterprise" placeholder="••••••••">
-                    </div>
-                    <button onclick="handleLogin()" class="btn-primary w-full">
-                        🔐 登入系統
-                    </button>
-                    <div id="login-error" class="text-sm text-red-600 text-center font-medium hidden bg-red-50 p-3 rounded-lg"></div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">密碼 (Password)</label>
+                    <input type="password" id="login-pass" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="請輸入密碼">
                 </div>
-
-                <div class="divider-enterprise"></div>
-
-                <div class="text-center">
-                    <button onclick="enterAsGuest()" class="text-sm text-gray-500 hover:text-gray-700 underline font-medium">
-                        以訪客模式進入 (唯讀)
-                    </button>
-                </div>
+                <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition shadow-md">登入系統</button>
+                <div id="login-error" class="text-xs text-rose-500 text-center font-medium hidden"></div>
+            </div>
+            <div class="text-center">
+                <button onclick="enterAsGuest()" class="text-xs text-gray-500 hover:text-gray-700 underline">以訪客模式檢視（僅能查看與匯出）</button>
             </div>
         </div>
     </div>
 
     <!-- 主應用程式介面 -->
     <div class="flex flex-col min-h-screen">
-        <!-- 企業級頭部 -->
-        <header class="enterprise-header sticky top-0 z-40">
-            <div class="max-w-7xl mx-auto px-6 py-4">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white rounded-lg p-2 shadow-lg">
-                            <span class="text-2xl">📊</span>
-                        </div>
-                        <div>
-                            <h1 class="text-xl font-bold text-white">Equipment Expansion</h1>
-                            <p class="text-blue-100 text-xs">Enterprise Gantt Chart System</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-6">
-                        <div class="flex items-center space-x-2">
-                            <span class="status-indicator" style="background: #10b981;"></span>
-                            <span id="sync-status" class="text-sm text-blue-100 font-medium">連線中...</span>
-                        </div>
-                        <div class="h-6 w-px bg-blue-400 opacity-50"></div>
-                        <span id="auth-status-badge" class="badge-enterprise badge-warning">🔒 訪客模式</span>
-                        <button id="logout-btn" onclick="handleLogout()" class="hidden badge-enterprise badge-danger cursor-pointer hover:opacity-80">登出</button>
-                    </div>
-                </div>
+        <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
+            <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">雲端授權版</span>
+            </h1>
+            <div class="flex items-center space-x-4">
+                <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 連線中...</span>
+                <span id="auth-status-badge" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-semibold">🔒 訪客模式 (唯讀)</span>
+                <button id="logout-btn" onclick="handleLogout()" class="hidden text-xs bg-rose-100 text-rose-700 px-3 py-1 rounded-full font-semibold hover:bg-rose-200 transition">登出</button>
             </div>
         </header>
 
         <!-- 分頁與工作表操作 -->
-        <div class="bg-white border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-6 py-0">
-                <div class="flex items-center justify-between">
-                    <div id="sheets-tabs" class="flex items-center space-x-1 overflow-x-auto"></div>
-                    <div id="admin-sheet-controls" class="flex items-center space-x-2 opacity-50 pointer-events-none py-3">
-                        <button onclick="addNewSheet()" class="btn-primary text-sm">+ 新增工作表</button>
-                        <button onclick="deleteCurrentSheet()" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition">刪除工作表</button>
-                    </div>
-                </div>
+        <div class="bg-white border-b px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div id="sheets-tabs" class="flex items-center space-x-2 overflow-x-auto pb-1"></div>
+            <div id="admin-sheet-controls" class="flex items-center space-x-2 opacity-50 pointer-events-none">
+                <button onclick="addNewSheet()" class="bg-emerald-600 text-white px-3.5 py-1.5 rounded-lg text-sm hover:bg-emerald-700 transition shadow-sm">+ 新增工作表</button>
+                <button onclick="deleteCurrentSheet()" class="bg-rose-500 text-white px-3.5 py-1.5 rounded-lg text-sm hover:bg-rose-600 transition shadow-sm">刪除工作表</button>
             </div>
         </div>
 
-        <!-- 工具欄 -->
-        <div class="bg-gray-50 border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-6 py-4">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center space-x-3">
-                        <label id="import-file-label" class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-2 font-medium select-none">
-                            📁 匯入 Excel 
-                            <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls, .csv" disabled onchange="importExcel(event)">
-                        </label>
-                        <button onclick="exportExcel()" class="btn-primary text-sm flex items-center gap-2">
-                            📥 匯出 Excel
-                        </button>
-                    </div>
-                    <div class="text-xs text-gray-500 font-medium">
-                        💾 已自動保存至雲端
-                    </div>
-                </div>
+        <!-- 檔案與截圖匯出列 -->
+        <div class="bg-gray-50 px-6 py-3 border-b flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <label id="import-file-label" class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-1.5 font-medium select-none">
+                    📁 匯入 Excel <input type="file" id="excel-file-input" class="hidden" accept=".xlsx, .xls, .csv" disabled onchange="importExcel(event)">
+                </label>
+                <button onclick="exportExcel()" class="bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-800 transition shadow-sm font-medium">📥 匯出 Excel</button>
             </div>
         </div>
 
         <!-- 主內容區 -->
-        <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
+        <main class="flex-1 p-6 space-y-6 bg-gray-100">
             <!-- 資料表格編輯區 -->
-            <div class="card-professional p-6 opacity-65 pointer-events-none transition">
-                <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 id="current-sheet-title" class="text-lg font-bold text-gray-900">工作表名稱</h3>
-                        <p class="text-xs text-gray-500 mt-1">編輯與管理設備擴張排程資料</p>
-                    </div>
+            <div id="table-container-wrapper" class="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto opacity-65 pointer-events-none transition">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="current-sheet-title" class="text-base font-bold text-gray-800">工作表名稱</h3>
                     <div class="space-x-2">
-                        <button onclick="addColumn()" class="btn-primary text-sm">+ 新增欄位</button>
-                        <button onclick="addRow()" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition">+ 新增列位</button>
+                        <button onclick="addColumn()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition">+ 新增欄位</button>
+                        <button onclick="addRow()" class="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition">+ 新增列位</button>
                     </div>
                 </div>
-                <div class="overflow-x-auto border rounded-lg border-gray-200">
-                    <table id="data-table" class="table-enterprise"></table>
+                <div class="max-h-96 overflow-y-auto border rounded-lg">
+                    <table id="data-table" class="min-w-full divide-y divide-gray-200 text-xs"></table>
                 </div>
             </div>
 
             <!-- 甘特圖預覽區 -->
-            <div id="gantt-export-area" class="card-professional p-6">
-                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900">📈 甘特圖與進度矩陣</h3>
-                        <p class="text-xs text-gray-500 mt-1">實時追蹤設備擴張進度</p>
-                    </div>
-                    
-                    <div class="flex items-center space-x-6 flex-wrap gap-3">
-                        <div class="flex flex-wrap gap-4 text-xs bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-cyan-200 border border-cyan-400 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">計畫</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-emerald-500 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">正常進行</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-rose-500 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">延遲</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-purple-600 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">已完成</span>
-                            </div>
+            <div id="gantt-export-area" class="bg-white rounded-xl shadow-sm border p-6 relative">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h3 class="text-base font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
+                    <div class="flex items-center space-x-4 flex-wrap gap-2">
+                        <div class="flex items-center space-x-3 text-xs bg-gray-50 px-3 py-1.5 rounded-lg border">
+                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
-
-                        <button id="export-btn" onclick="exportGanttPNG()" class="btn-primary text-sm flex items-center gap-2">
-                            📸 匯出為圖片
-                        </button>
+                        <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
                 </div>
-
-                <div id="gantt-container" class="space-y-4"></div>
+                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2"></div>
             </div>
         </main>
-
-        <!-- 頁尾 -->
-        <footer class="bg-gray-900 text-gray-400 py-6 border-t border-gray-800 mt-12">
-            <div class="max-w-7xl mx-auto px-6">
-                <div class="flex justify-between items-center text-xs">
-                    <div>
-                        <p class="font-semibold text-gray-300">Equipment Expansion Gantt Chart</p>
-                        <p>Enterprise Edition v1.0 | Powered by Firebase</p>
-                    </div>
-                    <div class="text-right">
-                        <p>© 2024 All Rights Reserved</p>
-                    </div>
-                </div>
-            </div>
-        </footer>
     </div>
 
     <!-- 邏輯腳本 -->
@@ -544,31 +216,23 @@
             const tableWrapper = document.getElementById('table-container-wrapper');
 
             if (isLoggedIn) {
-                badge.className = "badge-enterprise badge-success";
-                badge.innerText = "🔓 管理者模式";
+                badge.className = "text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-semibold";
+                badge.innerText = "🔓 管理者模式 (已解鎖)";
                 logoutBtn.classList.remove('hidden');
                 
                 adminSheetControls.classList.remove('opacity-50', 'pointer-events-none');
-                importLabel.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 font-medium";
+                importLabel.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition shadow-sm flex items-center gap-1.5 font-medium";
                 fileInput.disabled = false;
-                
-                const tableWrap = document.querySelector('[id="table-container-wrapper"]');
-                if (tableWrap) {
-                    tableWrap.classList.remove('opacity-65', 'pointer-events-none');
-                }
+                tableWrapper.classList.remove('opacity-65', 'pointer-events-none');
             } else {
-                badge.className = "badge-enterprise badge-warning";
-                badge.innerText = "🔒 訪客模式";
+                badge.className = "text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-semibold";
+                badge.innerText = "🔒 訪客模式 (唯讀)";
                 logoutBtn.classList.add('hidden');
 
                 adminSheetControls.classList.add('opacity-50', 'pointer-events-none');
-                importLabel.className = "bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-2 font-medium select-none";
+                importLabel.className = "bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-1.5 font-medium select-none";
                 fileInput.disabled = true;
-                
-                const tableWrap = document.querySelector('[id="table-container-wrapper"]');
-                if (tableWrap) {
-                    tableWrap.classList.add('opacity-65', 'pointer-events-none');
-                }
+                tableWrapper.classList.add('opacity-65', 'pointer-events-none');
             }
         }
 
@@ -588,16 +252,16 @@
                             }
                         });
                     });
-                    statusEl.className = "text-sm text-blue-100 font-medium";
-                    statusEl.innerText = "✅ 已連線";
+                    statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
+                    statusEl.innerText = "✅ 已連線雲端資料庫";
                 } else {
                     appData = {
                         sheets: [{
-                            name: "機台擴張排程 #1",
-                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01"],
+                            name: "機台擴張排程",
+                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01", "2026/07/01", "2026/08/01", "2026/09/01", "2026/10/01", "2026/11/01", "2026/12/01"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
                             ],
                             notes: {}
                         }]
@@ -624,7 +288,7 @@
             container.innerHTML = '';
             appData.sheets.forEach((sheet, idx) => {
                 const btn = document.createElement('button');
-                btn.className = `nav-tab ${idx === currentSheetIndex ? 'active' : ''}`;
+                btn.className = `px-4 py-1.5 rounded-lg text-sm font-semibold transition shadow-sm ${idx === currentSheetIndex ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`;
                 btn.innerText = sheet.name;
                 btn.onclick = () => { currentSheetIndex = idx; renderApp(); };
                 if (isLoggedIn) {
@@ -674,31 +338,31 @@
         function renderTable() {
             const sheet = appData.sheets[currentSheetIndex];
             const table = document.getElementById('data-table');
-            let html = '<thead><tr>';
+            let html = '<thead class="bg-gray-50 sticky top-0 z-10"><tr>';
             
             sheet.columns.forEach((col, cIdx) => {
-                html += `<th>
+                html += `<th class="px-3 py-2 text-left font-medium text-gray-600 uppercase tracking-wider border-b">
                     <div class="flex items-center space-x-1">
-                        <input type="text" value="${col}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateColumnName(${cIdx}, this.value)" class="input-enterprise bg-transparent border-0 text-sm">
-                        ${isLoggedIn ? `<button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1 font-bold">✕</button>` : ''}
+                        <input type="text" value="${col}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-24 text-xs font-semibold">
+                        ${isLoggedIn ? `<button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1">✕</button>` : ''}
                     </div>
                 </th>`;
             });
-            if (isLoggedIn) html += '<th class="text-center">操作</th>';
+            if (isLoggedIn) html += '<th class="px-3 py-2 text-center font-medium text-gray-600 uppercase tracking-wider border-b">操作</th>';
             html += '</tr></thead>';
             
-            html += '<tbody>';
+            html += '<tbody class="bg-white divide-y divide-gray-200">';
             sheet.rows.forEach((row, rIdx) => {
-                html += '<tr>';
+                html += '<tr class="hover:bg-gray-50 transition">';
                 sheet.columns.forEach((_, cIdx) => {
                     const val = row[cIdx] !== undefined ? row[cIdx] : '';
-                    html += `<td>
-                        <input type="text" value="${val}" ${!isLoggedIn ? 'disabled' : ''} oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="input-enterprise">
+                    html += `<td class="px-3 py-1.5 whitespace-nowrap border-b">
+                        <input type="text" value="${val}" ${!isLoggedIn ? 'disabled' : ''} oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded text-xs text-gray-800">
                     </td>`;
                 });
                 if (isLoggedIn) {
-                    html += `<td class="text-center">
-                        <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-bold">刪除</button>
+                    html += `<td class="px-3 py-1.5 whitespace-nowrap text-center border-b">
+                        <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-semibold">刪除</button>
                     </td>`;
                 }
                 html += '</tr>';
@@ -831,15 +495,13 @@
 
             Object.values(machineMap).forEach(group => {
                 const div = document.createElement('div');
-                div.className = 'gantt-card';
+                div.className = 'border rounded-xl p-4 bg-gray-50 flex flex-col gap-3 shadow-sm hover:shadow-md transition';
                 
-                let headerInfo = `<div class="flex items-center justify-between flex-wrap gap-3 mb-4 pb-4 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <span class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg text-xs font-bold">${group.dept}</span>
-                        <span class="text-gray-400">/</span>
-                        <span class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg text-xs font-bold">${group.clazz}</span>
-                        <span class="text-gray-400">/</span>
-                        <span class="text-blue-600 text-base font-bold">${group.machine}</span>
+                let headerInfo = `<div class="text-xs font-bold text-gray-700 flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.dept}</span> / 
+                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.clazz}</span> / 
+                        <span class="text-blue-600 text-sm font-extrabold">${group.machine}</span>
                     </div>
                 </div>`;
                 
@@ -876,54 +538,52 @@
                 }
 
                 let isCompleted = hasActualEnd && !isDelayed;
-                let contentHtml = '<div class="space-y-3">';
+                let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
 
                 if (planItem) {
-                    contentHtml += `<div class="flex items-center space-x-3">
-                        <span class="badge-enterprise gantt-status-planned">計畫</span>
-                        <span class="text-sm text-gray-600 font-medium">📅 ${planStart} ~ ${planEnd}</span>
+                    contentHtml += `<div class="flex items-center space-x-2">
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-900 border border-sky-400 shadow-sm">計畫</span>
+                        <span class="text-xs text-gray-600 font-medium">${planStart} ~ ${planEnd}</span>
                     </div>`;
                 }
 
                 if (actualItem) {
-                    let statusClass = 'gantt-status-on-track';
-                    let statusLabel = '正常進行';
+                    let actualBadgeClass = 'bg-emerald-500 text-white';
+                    let actualLabel = '實際正常';
                     if (isDelayed) {
-                        statusClass = 'gantt-status-delayed';
-                        statusLabel = hasActualEnd ? '已延遲' : '未完工/延遲';
+                        actualBadgeClass = 'bg-rose-500 text-white';
+                        actualLabel = hasActualEnd ? '實際落後' : '實際 (未完工/落後)';
                     } else if (isCompleted) {
-                        statusClass = 'gantt-status-completed';
-                        statusLabel = '已完成';
+                        actualBadgeClass = 'bg-purple-600 text-white';
+                        actualLabel = '實際已完成';
                     }
-                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (進行中)`;
-                    contentHtml += `<div class="flex items-center space-x-3">
-                        <span class="badge-enterprise ${statusClass}">${statusLabel}</span>
-                        <span class="text-sm text-gray-600 font-medium">📅 ${actualDateStr}</span>
+                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
+                    contentHtml += `<div class="flex items-center space-x-2 mt-1">
+                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass} shadow-sm">${actualLabel}</span>
+                        <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
                     </div>`;
                 }
 
-                let matrixHtml = '<div class="pt-4 mt-4 border-t border-gray-200"><div class="flex space-x-2 overflow-x-auto pb-2">';
+                let matrixHtml = '<div class="pt-2"><div class="flex space-x-1.5 overflow-x-auto pb-1">';
                 if (monthCols.length > 0) {
-                    matrixHtml += '<span class="text-xs text-gray-500 font-bold whitespace-nowrap pt-1">進度矩陣：</span>';
                     monthCols.forEach(m => {
                         const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
                         const pActive = pVal !== '' && pVal !== '0';
+                        const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900 shadow-sm' : 'bg-gray-200/70';
 
                         const aVal = actualItem ? String(actualItem[m.index] || '').trim() : '';
                         const aActive = aVal !== '' && aVal !== '0';
-                        
-                        let cellClass = 'bg-gray-200 text-gray-600';
+                        let aCellBg = 'bg-gray-200/70';
                         if (aActive) {
-                            if (isDelayed) cellClass = 'bg-rose-500 text-white';
-                            else if (isCompleted) cellClass = 'bg-purple-600 text-white';
-                            else cellClass = 'bg-emerald-500 text-white';
-                        } else if (pActive) {
-                            cellClass = 'bg-cyan-200 text-cyan-900 border border-cyan-400';
+                            if (isDelayed) aCellBg = 'bg-rose-500 text-white shadow-sm';
+                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white shadow-sm';
+                            else aCellBg = 'bg-emerald-500 text-white shadow-sm';
                         }
 
-                        matrixHtml += `<div class="flex flex-col items-center gap-1">
-                            <span class="text-[10px] text-gray-500 font-bold">${m.name}</span>
-                            <div class="w-10 h-8 rounded flex items-center justify-center text-xs font-bold ${cellClass}">${aActive ? '✓' : (pActive ? '○' : '')}</div>
+                        matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
+                            <span class="text-[11px] text-gray-500 font-semibold">${m.name}</span>
+                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold">${pActive ? '✓' : ''}</div>
+                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold">${aActive ? '✓' : ''}</div>
                         </div>`;
                     });
                 }
@@ -931,9 +591,9 @@
                 contentHtml += matrixHtml;
 
                 const currentNote = sheet.notes[group.keyName] || '';
-                let noteHtml = `<div class="mt-4 pt-4 border-t border-gray-200">
-                    <label class="block text-xs font-bold text-gray-600 mb-2 uppercase letter-spacing: 0.5px">📝 備註與說明</label>
-                    <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="輸入備註內容..." class="input-enterprise text-sm">
+                let noteHtml = `<div class="mt-2 pt-2 border-t border-gray-200">
+                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">📝 備註 / 說明文字：</label>
+                    <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="點擊此處輸入該機台的備註或說明..." class="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>`;
 
                 contentHtml += noteHtml + '</div>';
@@ -983,7 +643,7 @@
 
                 exportBtn.style.display = 'inline-block';
                 const link = document.createElement('a');
-                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖-${new Date().toISOString().slice(0,10)}.png`;
+                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             }).catch(err => {
@@ -1003,7 +663,7 @@
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
                 XLSX.utils.book_append_sheet(wb, ws, sheet.name);
             });
-            XLSX.writeFile(wb, `Equipment-Expansion-Gantt-${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, "機台擴張甘特圖資料.xlsx");
         }
 
         function importExcel(event) {
@@ -1039,7 +699,7 @@
                     currentSheetIndex = 0;
                     saveToCloud();
                     renderApp();
-                    alert("🎉 Excel 匯入成功！");
+                    alert("🎉 匯入 Excel 成功！");
                 }
             };
             reader.readAsBinaryString(file);
