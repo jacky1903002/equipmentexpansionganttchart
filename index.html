@@ -193,54 +193,76 @@
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
         }
 
-        .progress-bar-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 12px;
-            margin-bottom: 20px;
+        .progress-section {
+            margin-bottom: 24px;
         }
 
-        .progress-bar-wrapper {
-            flex: 1;
-            height: 36px;
-            background: #f3f4f6;
-            border-radius: 10px;
-            overflow: hidden;
+        .progress-label-row {
             display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+
+        .progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .progress-date {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .progress-percent {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e40af;
+        }
+
+        .progress-bar-stack {
+            position: relative;
+            height: 56px;
+            background: #f3f4f6;
+            border-radius: 12px;
+            overflow: hidden;
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
-        .progress-segment-plan {
+        .progress-bar-plan {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 32px;
             background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);
+            border-radius: 12px 0 0 0;
+            transition: width 0.3s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
+            padding-right: 12px;
             color: white;
             font-weight: bold;
-            font-size: 12px;
-            transition: flex 0.3s ease;
-            min-width: 40px;
+            font-size: 11px;
         }
 
-        .progress-segment-actual {
+        .progress-bar-actual {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 20px;
             background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            border-radius: 0 0 0 12px;
+            transition: width 0.3s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
+            padding-right: 10px;
             color: white;
             font-weight: bold;
-            font-size: 12px;
-            transition: flex 0.3s ease;
-            min-width: 40px;
-        }
-
-        .progress-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #6b7280;
-            min-width: 60px;
-            text-align: right;
+            font-size: 10px;
         }
 
         .nav-tab {
@@ -300,6 +322,41 @@
         .cell-view {
             word-break: break-word;
             min-height: 20px;
+        }
+
+        .legend-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+        }
+
+        .legend-color-plan {
+            background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);
+        }
+
+        .legend-color-actual {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        .legend-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
         }
     </style>
 </head>
@@ -431,7 +488,7 @@
                 <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">📈 進度甘特圖</h3>
-                        <p class="text-xs text-gray-500 mt-1">計畫與實際進度對比</p>
+                        <p class="text-xs text-gray-500 mt-1">計畫與實際進度對比分析</p>
                     </div>
                     
                     <button id="export-btn" onclick="exportGanttPNG()" class="btn-primary text-sm flex items-center gap-2">
@@ -440,18 +497,18 @@
                 </div>
 
                 <!-- 圖例 -->
-                <div class="flex flex-wrap gap-6 mb-6 pb-6 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-6 h-6 rounded" style="background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);"></div>
-                        <span class="text-sm font-medium text-gray-700">計畫進度</span>
+                <div class="legend-container">
+                    <div class="legend-item">
+                        <div class="legend-color legend-color-plan"></div>
+                        <span class="legend-text">計畫進度 (粗條)</span>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="w-6 h-6 rounded" style="background: linear-gradient(90deg, #10b981 0%, #059669 100%);"></div>
-                        <span class="text-sm font-medium text-gray-700">實際進度</span>
+                    <div class="legend-item">
+                        <div class="legend-color legend-color-actual"></div>
+                        <span class="legend-text">實際進度 (細條)</span>
                     </div>
                 </div>
 
-                <div id="gantt-container" class="space-y-6"></div>
+                <div id="gantt-container" class="space-y-8"></div>
             </div>
         </main>
 
@@ -638,7 +695,7 @@
                             columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01"],
                             rows: [
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "2026/05/20", "", "", "", "1", "1", "1"]
                             ],
                             notes: {}
                         }]
@@ -919,32 +976,38 @@
                 let actualProgress = actualStart && actualEnd ? calculateProgressPercent(actualStart, actualEnd) : 0;
 
                 let contentHtml = `<div class="space-y-6">
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
+                    <!-- 計畫進度 -->
+                    <div class="progress-section">
+                        <div class="progress-label-row">
                             <div>
-                                <p class="text-sm font-semibold text-gray-900">計畫進度</p>
-                                <p class="text-xs text-gray-500">${planStart} ~ ${planEnd}</p>
+                                <div class="progress-title">計畫進度</div>
+                                <div class="progress-date">${planStart} ~ ${planEnd}</div>
                             </div>
-                            <span class="text-sm font-bold text-gray-700">${planProgress}%</span>
+                            <div class="progress-percent">${planProgress}%</div>
                         </div>
-                        <div class="progress-bar-wrapper">
-                            <div class="progress-segment-plan" style="flex: ${planProgress}; min-width: ${Math.max(30, planProgress)}%;"></div>
-                            <div style="flex: ${100 - planProgress};"></div>
+                        
+                        <!-- 進度條堆疊 -->
+                        <div class="progress-bar-stack">
+                            <div class="progress-bar-plan" style="width: ${planProgress}%;">
+                                ${planProgress > 15 ? planProgress + '%' : ''}
+                            </div>
+                            ${actualItem ? `
+                            <div class="progress-bar-actual" style="width: ${actualProgress}%;">
+                                ${actualProgress > 10 ? actualProgress + '%' : ''}
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
 
                     ${actualItem ? `
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
+                    <!-- 實際進度 (單獨顯示) -->
+                    <div class="progress-section">
+                        <div class="progress-label-row">
                             <div>
-                                <p class="text-sm font-semibold text-gray-900">實際進度</p>
-                                <p class="text-xs text-gray-500">${actualStart} ${actualEnd ? '~ ' + actualEnd : '~ (進行中)'}</p>
+                                <div class="progress-title">實際進度</div>
+                                <div class="progress-date">${actualStart} ${actualEnd ? '~ ' + actualEnd : '~ (進行中)'}</div>
                             </div>
-                            <span class="text-sm font-bold text-gray-700">${actualProgress}%</span>
-                        </div>
-                        <div class="progress-bar-wrapper">
-                            <div class="progress-segment-actual" style="flex: ${actualProgress}; min-width: ${Math.max(30, actualProgress)}%;"></div>
-                            <div style="flex: ${100 - actualProgress};"></div>
+                            <div class="progress-percent">${actualProgress}%</div>
                         </div>
                     </div>
                     ` : ''}
