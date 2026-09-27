@@ -548,8 +548,8 @@
                         labelText = '計畫';
                     }
 
-                    // 修改：將文字移至 Bar 上方或採用更清楚的呈現，避免被 Bar 高度裁切
-                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-bold overflow-visible" style="left: ${startPct}%; width: ${widthPct}%;">
+                    // 調整：使用 flex items-center justify-start 確保文字完美垂直置中且靠左顯示
+                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2 text-[10px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
                         <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
                     </div>`;
                 };
@@ -668,7 +668,8 @@
                         labelText = 'Plan';
                     }
 
-                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-bold overflow-visible" style="left: ${startPct}%; width: ${widthPct}%;">
+                    // 調整：使用 flex items-center justify-start 確保文字完美垂直置中且靠左顯示
+                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2 text-[10px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
                         <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
                     </div>`;
                 };
