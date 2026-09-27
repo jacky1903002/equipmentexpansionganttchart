@@ -42,11 +42,6 @@
             box-shadow: 0 4px 20px rgba(30, 64, 175, 0.15);
         }
 
-        .enterprise-sidebar {
-            background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
-            border-right: 1px solid #e5e7eb;
-        }
-
         .card-professional {
             background: #ffffff;
             border: 1px solid #e5e7eb;
@@ -133,19 +128,21 @@
         }
 
         .table-enterprise th {
-            padding: 14px;
+            padding: 16px 18px;
             text-align: left;
             font-weight: 600;
             color: #374151;
             font-size: 13px;
             letter-spacing: 0.5px;
             text-transform: uppercase;
+            min-width: 120px;
         }
 
         .table-enterprise td {
-            padding: 12px 14px;
+            padding: 16px 18px;
             border-bottom: 1px solid #e5e7eb;
             color: #111827;
+            min-width: 120px;
         }
 
         .table-enterprise tbody tr:hover {
@@ -186,8 +183,8 @@
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
             transition: all 0.3s ease;
         }
 
@@ -196,28 +193,54 @@
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
         }
 
-        .gantt-status-planned {
-            background: linear-gradient(135deg, #e0f2fe 0%, #cffafe 100%);
-            border: 1px solid #06b6d4;
-            color: #0c4a6e;
+        .progress-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            margin-bottom: 20px;
         }
 
-        .gantt-status-on-track {
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            border: 1px solid #059669;
-            color: #065f46;
+        .progress-bar-wrapper {
+            flex: 1;
+            height: 36px;
+            background: #f3f4f6;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
-        .gantt-status-delayed {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            border: 1px solid #dc2626;
-            color: #7f1d1d;
+        .progress-segment-plan {
+            background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            transition: flex 0.3s ease;
+            min-width: 40px;
         }
 
-        .gantt-status-completed {
-            background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
-            border: 1px solid #9333ea;
-            color: #581c87;
+        .progress-segment-actual {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            transition: flex 0.3s ease;
+            min-width: 40px;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            min-width: 60px;
+            text-align: right;
         }
 
         .nav-tab {
@@ -259,6 +282,24 @@
         .divider-enterprise {
             border-top: 1px solid #e5e7eb;
             margin: 16px 0;
+        }
+
+        .cell-editable {
+            cursor: pointer;
+            position: relative;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .cell-editable:hover {
+            background: #e0f2fe;
+            border: 1px solid #7dd3fc;
+        }
+
+        .cell-view {
+            word-break: break-word;
+            min-height: 20px;
         }
     </style>
 </head>
@@ -369,11 +410,11 @@
         <!-- 主內容區 -->
         <main class="flex-1 p-6 max-w-7xl mx-auto w-full space-y-6">
             <!-- 資料表格編輯區 -->
-            <div class="card-professional p-6 opacity-65 pointer-events-none transition">
+            <div class="card-professional p-6 opacity-65 pointer-events-none transition" id="table-container-wrapper">
                 <div class="flex justify-between items-center mb-6">
                     <div>
                         <h3 id="current-sheet-title" class="text-lg font-bold text-gray-900">工作表名稱</h3>
-                        <p class="text-xs text-gray-500 mt-1">編輯與管理設備擴張排程資料</p>
+                        <p class="text-xs text-gray-500 mt-1">編輯與管理設備擴張排程資料 (雙擊單元格編輯)</p>
                     </div>
                     <div class="space-x-2">
                         <button onclick="addColumn()" class="btn-primary text-sm">+ 新增欄位</button>
@@ -389,37 +430,28 @@
             <div id="gantt-export-area" class="card-professional p-6">
                 <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">📈 甘特圖與進度矩陣</h3>
-                        <p class="text-xs text-gray-500 mt-1">實時追蹤設備擴張進度</p>
+                        <h3 class="text-lg font-bold text-gray-900">📈 進度甘特圖</h3>
+                        <p class="text-xs text-gray-500 mt-1">計畫與實際進度對比</p>
                     </div>
                     
-                    <div class="flex items-center space-x-6 flex-wrap gap-3">
-                        <div class="flex flex-wrap gap-4 text-xs bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-cyan-200 border border-cyan-400 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">計畫</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-emerald-500 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">正常進行</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-rose-500 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">延遲</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="w-3 h-3 bg-purple-600 rounded inline-block"></span>
-                                <span class="text-gray-700 font-medium">已完成</span>
-                            </div>
-                        </div>
+                    <button id="export-btn" onclick="exportGanttPNG()" class="btn-primary text-sm flex items-center gap-2">
+                        📸 匯出為圖片
+                    </button>
+                </div>
 
-                        <button id="export-btn" onclick="exportGanttPNG()" class="btn-primary text-sm flex items-center gap-2">
-                            📸 匯出為圖片
-                        </button>
+                <!-- 圖例 -->
+                <div class="flex flex-wrap gap-6 mb-6 pb-6 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded" style="background: linear-gradient(90deg, #06b6d4 0%, #0891b2 100%);"></div>
+                        <span class="text-sm font-medium text-gray-700">計畫進度</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded" style="background: linear-gradient(90deg, #10b981 0%, #059669 100%);"></div>
+                        <span class="text-sm font-medium text-gray-700">實際進度</span>
                     </div>
                 </div>
 
-                <div id="gantt-container" class="space-y-4"></div>
+                <div id="gantt-container" class="space-y-6"></div>
             </div>
         </main>
 
@@ -437,6 +469,22 @@
                 </div>
             </div>
         </footer>
+    </div>
+
+    <!-- 編輯模態框 -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm hidden">
+        <div class="modal-enterprise max-w-sm w-full">
+            <div class="px-8 py-6 border-b border-gray-200">
+                <h3 class="text-lg font-bold text-gray-900">編輯單元格</h3>
+            </div>
+            <div class="px-8 py-6">
+                <input type="text" id="edit-input" class="input-enterprise text-base" placeholder="輸入內容">
+            </div>
+            <div class="px-8 py-4 bg-gray-50 border-t border-gray-200 flex gap-3 justify-end rounded-b-2xl">
+                <button onclick="cancelEdit()" class="btn-secondary">取消</button>
+                <button onclick="saveEdit()" class="btn-primary">保存</button>
+            </div>
+        </div>
     </div>
 
     <!-- 邏輯腳本 -->
@@ -459,6 +507,7 @@
         let appData = { sheets: [] };
         let currentSheetIndex = 0;
         let isLoggedIn = false;
+        let editingCell = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             auth.onAuthStateChanged((user) => {
@@ -551,11 +600,7 @@
                 adminSheetControls.classList.remove('opacity-50', 'pointer-events-none');
                 importLabel.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-indigo-700 transition shadow-sm flex items-center gap-2 font-medium";
                 fileInput.disabled = false;
-                
-                const tableWrap = document.querySelector('[id="table-container-wrapper"]');
-                if (tableWrap) {
-                    tableWrap.classList.remove('opacity-65', 'pointer-events-none');
-                }
+                tableWrapper.classList.remove('opacity-65', 'pointer-events-none');
             } else {
                 badge.className = "badge-enterprise badge-warning";
                 badge.innerText = "🔒 訪客模式";
@@ -564,11 +609,7 @@
                 adminSheetControls.classList.add('opacity-50', 'pointer-events-none');
                 importLabel.className = "bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed flex items-center gap-2 font-medium select-none";
                 fileInput.disabled = true;
-                
-                const tableWrap = document.querySelector('[id="table-container-wrapper"]');
-                if (tableWrap) {
-                    tableWrap.classList.add('opacity-65', 'pointer-events-none');
-                }
+                tableWrapper.classList.add('opacity-65', 'pointer-events-none');
             }
         }
 
@@ -671,6 +712,42 @@
             }
         }
 
+        function startEdit(rIdx, cIdx, currentValue) {
+            if (!isLoggedIn) return;
+            editingCell = { rIdx, cIdx };
+            document.getElementById('edit-input').value = currentValue;
+            document.getElementById('edit-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('edit-input').focus(), 100);
+        }
+
+        function saveEdit() {
+            if (!editingCell) return;
+            const newValue = document.getElementById('edit-input').value;
+            const { rIdx, cIdx } = editingCell;
+            
+            let processedValue = newValue;
+            if (cIdx === 4 || cIdx === 5) {
+                processedValue = formatDateClean(newValue);
+            }
+            
+            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = processedValue;
+            saveToCloud();
+            renderApp();
+            cancelEdit();
+        }
+
+        function cancelEdit() {
+            editingCell = null;
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (editingCell) {
+                if (e.key === 'Enter') saveEdit();
+                if (e.key === 'Escape') cancelEdit();
+            }
+        });
+
         function renderTable() {
             const sheet = appData.sheets[currentSheetIndex];
             const table = document.getElementById('data-table');
@@ -678,8 +755,8 @@
             
             sheet.columns.forEach((col, cIdx) => {
                 html += `<th>
-                    <div class="flex items-center space-x-1">
-                        <input type="text" value="${col}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateColumnName(${cIdx}, this.value)" class="input-enterprise bg-transparent border-0 text-sm">
+                    <div class="flex items-center space-x-1 justify-between">
+                        <span class="font-semibold text-gray-700">${col}</span>
                         ${isLoggedIn ? `<button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1 font-bold">✕</button>` : ''}
                     </div>
                 </th>`;
@@ -693,12 +770,14 @@
                 sheet.columns.forEach((_, cIdx) => {
                     const val = row[cIdx] !== undefined ? row[cIdx] : '';
                     html += `<td>
-                        <input type="text" value="${val}" ${!isLoggedIn ? 'disabled' : ''} oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="input-enterprise">
+                        <div class="cell-editable" ondblclick="startEdit(${rIdx}, ${cIdx}, '${val.replace(/'/g, "\\'")}')">
+                            <div class="cell-view">${val || '<span class="text-gray-400">-</span>'}</div>
+                        </div>
                     </td>`;
                 });
                 if (isLoggedIn) {
                     html += `<td class="text-center">
-                        <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-bold">刪除</button>
+                        <button onclick="deleteRow(${rIdx})" class="text-red-600 hover:text-red-900 text-xs font-bold px-2 py-1 bg-red-50 rounded hover:bg-red-100">刪除</button>
                     </td>`;
                 }
                 html += '</tr>';
@@ -774,46 +853,24 @@
             renderApp();
         }
 
+        function calculateProgressPercent(startDate, endDate) {
+            if (!startDate || !endDate) return 0;
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const today = new Date('2026-09-25');
+            
+            const total = end - start;
+            const elapsed = today - start;
+            
+            if (total <= 0) return 0;
+            const percent = Math.min(100, Math.max(0, (elapsed / total) * 100));
+            return Math.round(percent);
+        }
+
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
-
-            const today = new Date('2026-09-25');
-            const monthCols = [];
-            const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
-            sheet.columns.forEach((col, idx) => {
-                let cStr = String(col || '').trim();
-                let isMonthCol = false;
-                let displayName = cStr;
-
-                if (cStr.includes('/') || cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
-                    const d = new Date(cStr);
-                    if (!isNaN(d.getTime())) {
-                        const yr = String(d.getFullYear()).slice(-2);
-                        const moIdx = d.getMonth();
-                        displayName = `${monthNamesShort[moIdx]}-${yr}`;
-                    }
-                    isMonthCol = true;
-                }
-                
-                if (idx >= 6 || isMonthCol) {
-                    if (idx >= 6) {
-                        isMonthCol = true;
-                        const d = new Date(cStr);
-                        if (!isNaN(d.getTime())) {
-                            const yr = String(d.getFullYear()).slice(-2);
-                            const moIdx = d.getMonth();
-                            displayName = `${monthNamesShort[moIdx]}-${yr}`;
-                        }
-                    }
-                }
-
-                if (isMonthCol) {
-                    monthCols.push({ name: displayName, originalName: cStr, index: idx });
-                }
-            });
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -833,7 +890,7 @@
                 const div = document.createElement('div');
                 div.className = 'gantt-card';
                 
-                let headerInfo = `<div class="flex items-center justify-between flex-wrap gap-3 mb-4 pb-4 border-b border-gray-200">
+                let headerInfo = `<div class="flex items-center justify-between flex-wrap gap-3 mb-6 pb-4 border-b border-gray-200">
                     <div class="flex items-center gap-3">
                         <span class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-lg text-xs font-bold">${group.dept}</span>
                         <span class="text-gray-400">/</span>
@@ -856,87 +913,50 @@
                 let planEnd = planItem ? formatDateClean(planItem[5]) : '';
                 let actualStart = actualItem ? formatDateClean(actualItem[4]) : '';
                 let actualEnd = actualItem ? formatDateClean(actualItem[5]) : '';
-                let hasActualEnd = actualEnd && actualEnd.trim() !== '';
-                
-                let isDelayed = false;
-                if (actualItem) {
-                    const typeStr = String(actualItem[3] || '');
-                    if (typeStr.includes('落後')) {
-                        isDelayed = true;
-                    } else if (planStart && actualStart && actualStart > planStart) {
-                        isDelayed = true;
-                    } else if (hasActualEnd && planEnd && actualEnd > planEnd) {
-                        isDelayed = true;
-                    } else if (!hasActualEnd && planEnd) {
-                        const pEndDate = new Date(planEnd);
-                        if (!isNaN(pEndDate) && pEndDate < today) {
-                            isDelayed = true;
-                        }
-                    }
-                }
 
-                let isCompleted = hasActualEnd && !isDelayed;
-                let contentHtml = '<div class="space-y-3">';
+                // 計算進度百分比
+                let planProgress = planStart && planEnd ? calculateProgressPercent(planStart, planEnd) : 0;
+                let actualProgress = actualStart && actualEnd ? calculateProgressPercent(actualStart, actualEnd) : 0;
 
-                if (planItem) {
-                    contentHtml += `<div class="flex items-center space-x-3">
-                        <span class="badge-enterprise gantt-status-planned">計畫</span>
-                        <span class="text-sm text-gray-600 font-medium">📅 ${planStart} ~ ${planEnd}</span>
-                    </div>`;
-                }
+                let contentHtml = `<div class="space-y-6">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">計畫進度</p>
+                                <p class="text-xs text-gray-500">${planStart} ~ ${planEnd}</p>
+                            </div>
+                            <span class="text-sm font-bold text-gray-700">${planProgress}%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-segment-plan" style="flex: ${planProgress}; min-width: ${Math.max(30, planProgress)}%;"></div>
+                            <div style="flex: ${100 - planProgress};"></div>
+                        </div>
+                    </div>
 
-                if (actualItem) {
-                    let statusClass = 'gantt-status-on-track';
-                    let statusLabel = '正常進行';
-                    if (isDelayed) {
-                        statusClass = 'gantt-status-delayed';
-                        statusLabel = hasActualEnd ? '已延遲' : '未完工/延遲';
-                    } else if (isCompleted) {
-                        statusClass = 'gantt-status-completed';
-                        statusLabel = '已完成';
-                    }
-                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (進行中)`;
-                    contentHtml += `<div class="flex items-center space-x-3">
-                        <span class="badge-enterprise ${statusClass}">${statusLabel}</span>
-                        <span class="text-sm text-gray-600 font-medium">📅 ${actualDateStr}</span>
-                    </div>`;
-                }
-
-                let matrixHtml = '<div class="pt-4 mt-4 border-t border-gray-200"><div class="flex space-x-2 overflow-x-auto pb-2">';
-                if (monthCols.length > 0) {
-                    matrixHtml += '<span class="text-xs text-gray-500 font-bold whitespace-nowrap pt-1">進度矩陣：</span>';
-                    monthCols.forEach(m => {
-                        const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
-                        const pActive = pVal !== '' && pVal !== '0';
-
-                        const aVal = actualItem ? String(actualItem[m.index] || '').trim() : '';
-                        const aActive = aVal !== '' && aVal !== '0';
-                        
-                        let cellClass = 'bg-gray-200 text-gray-600';
-                        if (aActive) {
-                            if (isDelayed) cellClass = 'bg-rose-500 text-white';
-                            else if (isCompleted) cellClass = 'bg-purple-600 text-white';
-                            else cellClass = 'bg-emerald-500 text-white';
-                        } else if (pActive) {
-                            cellClass = 'bg-cyan-200 text-cyan-900 border border-cyan-400';
-                        }
-
-                        matrixHtml += `<div class="flex flex-col items-center gap-1">
-                            <span class="text-[10px] text-gray-500 font-bold">${m.name}</span>
-                            <div class="w-10 h-8 rounded flex items-center justify-center text-xs font-bold ${cellClass}">${aActive ? '✓' : (pActive ? '○' : '')}</div>
-                        </div>`;
-                    });
-                }
-                matrixHtml += '</div></div>';
-                contentHtml += matrixHtml;
+                    ${actualItem ? `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">實際進度</p>
+                                <p class="text-xs text-gray-500">${actualStart} ${actualEnd ? '~ ' + actualEnd : '~ (進行中)'}</p>
+                            </div>
+                            <span class="text-sm font-bold text-gray-700">${actualProgress}%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-segment-actual" style="flex: ${actualProgress}; min-width: ${Math.max(30, actualProgress)}%;"></div>
+                            <div style="flex: ${100 - actualProgress};"></div>
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>`;
 
                 const currentNote = sheet.notes[group.keyName] || '';
-                let noteHtml = `<div class="mt-4 pt-4 border-t border-gray-200">
+                let noteHtml = `<div class="mt-6 pt-6 border-t border-gray-200">
                     <label class="block text-xs font-bold text-gray-600 mb-2 uppercase letter-spacing: 0.5px">📝 備註與說明</label>
                     <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="輸入備註內容..." class="input-enterprise text-sm">
                 </div>`;
 
-                contentHtml += noteHtml + '</div>';
+                contentHtml += noteHtml;
                 div.innerHTML = headerInfo + contentHtml;
                 container.appendChild(div);
             });
