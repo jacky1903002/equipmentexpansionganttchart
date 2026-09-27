@@ -500,7 +500,7 @@
                 group.items.forEach(row => {
                     const type = String(row[3] || '');
                     if (type.includes('計畫')) planItem = row;
-                    else if (type.includes('進行中') || type.includes('實際')) activeItem = row;
+                    else if (type.includes('進行中') || type.includes('進行中')) activeItem = row;
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
@@ -521,7 +521,7 @@
                     } else if (typeStr.includes('已完成') || typeStr.includes('完成')) {
                         barColor = 'bg-cyan-500';
                         labelText = '已完成';
-                    } else if (typeStr.includes('進行中') || typeStr.includes('實際')) {
+                    } else if (typeStr.includes('進行中') || typeStr.includes('進行中')) {
                         barColor = 'bg-emerald-500';
                         labelText = '進行中';
                     } else if (typeStr.includes('計畫')) {
