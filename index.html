@@ -11,10 +11,10 @@
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- Firebase SDK (Compat 版本) -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <!-- Firebase SDK v8 (穩定相容版本) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans antialiased relative">
 
@@ -29,14 +29,14 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">電子郵件 (Email)</label>
-                    <input type="email" id="login-email" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="name@example.com">
+                    <input type="email" id="login-email" value="n1693131@gmail.com" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="name@example.com">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">密碼 (Password)</label>
                     <input type="password" id="login-pass" class="w-full px-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="請輸入密碼">
                 </div>
                 <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition shadow-md">登入系統</button>
-                <div id="login-error" class="text-xs text-rose-500 text-center font-medium hidden"></div>
+                <div id="login-error" class="text-xs text-rose-500 text-center font-medium hidden p-2 bg-rose-50 rounded border border-rose-200"></div>
             </div>
             <div class="text-center">
                 <button onclick="enterAsGuest()" class="text-xs text-gray-500 hover:text-gray-700 underline">以訪客模式檢視（僅能查看與匯出）</button>
@@ -111,7 +111,7 @@
         </main>
     </div>
 
-    <!-- 邏輯腳本 -->
+    <!-- 邏輯腳本 (Firebase v8) -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyC0sT-i0AwNH9utv5JFVZ1HfXXoRDVQyYs",
@@ -187,8 +187,18 @@
                     errEl.classList.add('hidden');
                 })
                 .catch((error) => {
-                    console.error(error);
-                    errEl.innerText = "登入失敗：請確認 Email 與密碼是否正確。";
+                    console.error("Firebase Login Error:", error);
+                    let msg = "登入失敗：" + error.message;
+                    if (error.code === 'auth/user-not-found') {
+                        msg = "登入失敗：此電子郵件尚未在 Firebase 建立帳號。";
+                    } else if (error.code === 'auth/wrong-password') {
+                        msg = "登入失敗：密碼錯誤。";
+                    } else if (error.code === 'auth/invalid-email') {
+                        msg = "登入失敗：電子郵件格式錯誤。";
+                    } else if (error.code === 'auth/operation-not-allowed') {
+                        msg = "登入失敗：尚未在 Firebase 後台啟用「電子郵件/密碼 (Email/Password)」登入功能！";
+                    }
+                    errEl.innerText = msg;
                     errEl.classList.remove('hidden');
                 });
         }
@@ -200,7 +210,6 @@
 
         function handleLogout() {
             auth.signOut().then(() => {
-                document.getElementById('login-email').value = "";
                 document.getElementById('login-pass').value = "";
                 document.getElementById('login-modal').classList.remove('hidden');
                 updateUIPermissions();
@@ -430,7 +439,6 @@
             renderApp();
         }
 
-        // 渲染完全單行整合的甘特圖
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -514,14 +522,12 @@
                     </div>`;
                 };
 
-                // 將機台名稱與圖表整合在同一列（直接跨 12 個月份格子）
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
                     <td class="py-3 px-4 border-r align-middle w-64">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                // 跨 12 個月份欄位，內含背景格線與上下並排的計畫/實際長條
                 tableHtml += `<td colspan="12" class="p-0 relative h-12">
                     <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
@@ -596,7 +602,7 @@
                             });
                         });
                         
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length].fill("")], notes: {} });
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
                     }
                 });
                 if (newSheets.length > 0) {
