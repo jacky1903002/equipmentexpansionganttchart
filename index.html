@@ -101,7 +101,7 @@
                             <span class="flex items-center"><span class="w-3 h-3 bg-amber-400 inline-block mr-1 rounded"></span>計畫</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>進行中</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>落後</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-cyan-500 inline-block mr-1 rounded"></span>完成</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-cyan-500 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
@@ -503,7 +503,7 @@
                     else if (type.includes('進行中') || type.includes('實際')) activeItem = row;
                 });
 
-                const renderBar = (item, labelText, defaultColor, topClass) => {
+                const renderBar = (item, defaultColor, topClass) => {
                     if (!item) return '';
                     const startVal = item[4] || '';
                     const endVal = item[5] || '';
@@ -512,16 +512,21 @@
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
-                    const typeStr = String(item[3] || '').trim();
+                    let labelText = String(item[3] || '').trim();
+                    const typeStr = labelText;
                     
                     if (typeStr.includes('落後')) {
                         barColor = 'bg-rose-500';
-                    } else if (typeStr.includes('完成')) {
+                        labelText = '落後';
+                    } else if (typeStr.includes('已完成') || typeStr.includes('完成')) {
                         barColor = 'bg-cyan-500';
+                        labelText = '已完成';
                     } else if (typeStr.includes('進行中') || typeStr.includes('實際')) {
                         barColor = 'bg-emerald-500';
+                        labelText = '進行中';
                     } else if (typeStr.includes('計畫')) {
                         barColor = 'bg-amber-400';
+                        labelText = '計畫';
                     }
 
                     return `<div class="absolute ${topClass} h-3.5 rounded-full ${barColor} shadow-sm flex items-center px-1.5 text-[9px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
@@ -541,8 +546,8 @@
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, '計畫', 'bg-amber-400', 'top-1')}
-                    ${renderBar(activeItem, '進行中', 'bg-emerald-500', 'top-6')}
+                    ${renderBar(planItem, 'bg-amber-400', 'top-1')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-6')}
                 </td>`;
 
                 tableHtml += `</tr>`;
