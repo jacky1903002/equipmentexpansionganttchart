@@ -548,27 +548,26 @@
                         labelText = '計畫';
                     }
 
-                    // 調整：使用 h-6 與 flex items-center 確保上下左右都有完美留白且文字完全顯示
-                    return `<div class="absolute ${topClass} h-6 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2.5 text-[11px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="whitespace-nowrap drop-shadow-sm leading-none">${labelText}</span>
+                    // 調整：使用 flex items-center justify-start 確保文字完美垂直置中且靠左顯示
+                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2 text-[10px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
                     </div>`;
                 };
 
-                // 調整：列高改為 h-20 確保上下有足夠空間容納兩條 Bar
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
                     <td class="py-3 px-4 border-r align-middle w-64">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                tableHtml += `<td colspan="12" class="p-0 relative h-20">
+                tableHtml += `<td colspan="12" class="p-0 relative h-16">
                     <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, 'bg-amber-400', 'top-2')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
+                    ${renderBar(planItem, 'bg-amber-400', 'top-1')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-9')}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -669,27 +668,26 @@
                         labelText = 'Plan';
                     }
 
-                    // 調整：使用 h-6 與 flex items-center 確保上下左右都有完美留白且文字完全顯示
-                    return `<div class="absolute ${topClass} h-6 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2.5 text-[11px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="whitespace-nowrap drop-shadow-sm leading-none">${labelText}</span>
+                    // 調整：使用 flex items-center justify-start 確保文字完美垂直置中且靠左顯示
+                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2 text-[10px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
                     </div>`;
                 };
 
-                // 調整：列高改為 h-20 確保上下有足夠空間容納兩條 Bar
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
                     <td class="py-3 px-4 border-r align-middle w-64">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                tableHtml += `<td colspan="12" class="p-0 relative h-20">
+                tableHtml += `<td colspan="12" class="p-0 relative h-16">
                     <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, 'bg-amber-400', 'top-2')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
+                    ${renderBar(planItem, 'bg-amber-400', 'top-1')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-9')}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -778,7 +776,7 @@
                             });
                         });
                         
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length].fill("")], notes: {} });
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
                     }
                 });
                 if (newSheets.length > 0) {
