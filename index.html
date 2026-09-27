@@ -450,6 +450,7 @@
             container.innerHTML = '';
 
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const today = new Date();
 
             function parseDateValue(value) {
                 if (value === null || value === undefined) return null;
@@ -491,10 +492,6 @@
 
             function monthDisplayName(date) {
                 return monthNames[date.getMonth()];
-            }
-
-            function monthDisplayLabel(date) {
-                return `${monthDisplayName(date)}-${String(date.getFullYear()).slice(-2)}`;
             }
 
             function resolveMonthSequence() {
@@ -554,6 +551,36 @@
                 if (!start && end) start = new Date(end.getFullYear(), end.getMonth(), 1);
                 if (!end && start) end = new Date(start.getFullYear(), start.getMonth(), 1);
                 return { start, end };
+            }
+
+            function determineActualStatus(planRow, actualRow) {
+                if (!actualRow) return null;
+
+                const planDates = resolveTaskDates(planRow);
+                const actualDates = resolveTaskDates(actualRow);
+
+                if (!actualDates.start || !actualDates.end) {
+                    return null;
+                }
+
+                const actualEnd = actualDates.end;
+                const planEnd = planDates.end;
+
+                const hasEndDate = actualRow[5] && String(actualRow[5]).trim() !== '';
+
+                if (hasEndDate) {
+                    if (actualEnd > planEnd) {
+                        return 'delayed';
+                    } else {
+                        return 'completed';
+                    }
+                } else {
+                    if (today > planEnd) {
+                        return 'delayed';
+                    } else {
+                        return 'normal';
+                    }
+                }
             }
 
             const { start: rangeStart, end: rangeEnd, months } = resolveMonthSequence();
@@ -744,14 +771,15 @@
                 };
 
                 const planColor = '#f9c76b';
+                
                 let actualColor = '#5bc0be';
-                if (actualRow) {
-                    const actualType = String(actualRow[3] || '').trim();
-                    if (actualType.includes('落後')) {
-                        actualColor = '#f26b6b';
-                    } else if (actualType.includes('已完成') || actualType.includes('完成')) {
-                        actualColor = '#7f8cf7';
-                    }
+                const statusType = determineActualStatus(planRow, actualRow);
+                if (statusType === 'delayed') {
+                    actualColor = '#f26b6b';
+                } else if (statusType === 'completed') {
+                    actualColor = '#7f8cf7';
+                } else if (statusType === 'normal') {
+                    actualColor = '#5bc0be';
                 }
 
                 if (planRow) addBar(planRow, planColor, 12, 18, 1);
