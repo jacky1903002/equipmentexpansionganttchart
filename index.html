@@ -78,7 +78,7 @@
 
         <!-- 主內容區 -->
         <main class="flex-1 p-6 space-y-6 bg-gray-100">
-            <!-- 資料表格編輯區 (修正寬度，確保文字完整顯示) -->
+            <!-- 資料表格編輯區 -->
             <div id="table-container-wrapper" class="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto opacity-65 pointer-events-none transition">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="current-sheet-title" class="text-base font-bold text-gray-800">工作表名稱</h3>
@@ -92,21 +92,21 @@
                 </div>
             </div>
 
-            <!-- 甘特圖預覽區 -->
+            <!-- 甘特圖預覽區 (傳統橫條圖風格) -->
             <div id="gantt-export-area" class="bg-white rounded-xl shadow-sm border p-6 relative">
                 <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
-                    <h3 class="text-base font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
+                    <h3 class="text-base font-bold text-gray-800">📈 甘特圖時間軸預覽</h3>
                     <div class="flex items-center space-x-4 flex-wrap gap-2">
                         <div class="flex items-center space-x-3 text-xs bg-gray-50 px-3 py-1.5 rounded-lg border">
-                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-amber-400 inline-block mr-1 rounded"></span>計畫 / 進行中</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
-                            <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-cyan-500 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
                 </div>
-                <div id="gantt-container" class="space-y-4 overflow-x-auto py-2"></div>
+                <div id="gantt-container" class="overflow-x-auto py-2"></div>
             </div>
         </main>
     </div>
@@ -258,10 +258,10 @@
                     appData = {
                         sheets: [{
                             name: "機台擴張排程",
-                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01", "2026/07/01", "2026/08/01", "2026/09/01", "2026/10/01", "2026/11/01", "2026/12/01"],
+                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026-01-05", "2026-04-15"],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026-03-01", "2026-09-15"]
                             ],
                             notes: {}
                         }]
@@ -312,8 +312,8 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026/01/01", "2026/02/01", "1", "1"]],
+                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026-01-01", "2026-03-31"]],
                 notes: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
@@ -403,7 +403,7 @@
 
         function addColumn() {
             if (!isLoggedIn) return;
-            const colName = prompt("請輸入新欄位名稱 (例如 2026/01/01)：", "2026/01/01");
+            const colName = prompt("請輸入新欄位名稱：", "欄位");
             if (!colName) return;
             appData.sheets[currentSheetIndex].columns.push(formatHeaderClean(colName));
             appData.sheets[currentSheetIndex].rows.forEach(row => row.push(""));
@@ -438,46 +438,18 @@
             renderApp();
         }
 
+        // 渲染傳統橫條甘特圖
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            const today = new Date('2026-09-25');
-            const monthCols = [];
-            const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
-            sheet.columns.forEach((col, idx) => {
-                let cStr = String(col || '').trim();
-                let isMonthCol = false;
-                let displayName = cStr;
-
-                if (cStr.includes('/') || cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
-                    const d = new Date(cStr);
-                    if (!isNaN(d.getTime())) {
-                        const yr = String(d.getFullYear()).slice(-2);
-                        const moIdx = d.getMonth();
-                        displayName = `${monthNamesShort[moIdx]}-${yr}`;
-                    }
-                    isMonthCol = true;
-                }
-                
-                if (idx >= 6 || isMonthCol) {
-                    if (idx >= 6) {
-                        isMonthCol = true;
-                        const d = new Date(cStr);
-                        if (!isNaN(d.getTime())) {
-                            const yr = String(d.getFullYear()).slice(-2);
-                            const moIdx = d.getMonth();
-                            displayName = `${monthNamesShort[moIdx]}-${yr}`;
-                        }
-                    }
-                }
-
-                if (isMonthCol) {
-                    monthCols.push({ name: displayName, originalName: cStr, index: idx });
-                }
-            });
+            const months = [
+                { name: 'Jan', q: '01' }, { name: 'Feb', q: '01' }, { name: 'Mar', q: '01' },
+                { name: 'Apr', q: '02' }, { name: 'May', q: '02' }, { name: 'Jun', q: '02' },
+                { name: 'Jul', q: '03' }, { name: 'Aug', q: '03' }, { name: 'Sep', q: '03' },
+                { name: 'Oct', q: '04' }, { name: 'Nov', q: '04' }, { name: 'Dec', q: '04' }
+            ];
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -493,18 +465,37 @@
 
             if (!sheet.notes) sheet.notes = {};
 
+            let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
+                <table class="w-full border-collapse text-xs min-w-[900px]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b text-gray-500">
+                            <th class="py-2.5 px-4 text-left border-r w-64">任務 / 機台</th>
+                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">01</th>
+                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">02</th>
+                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">03</th>
+                            <th class="py-1 px-1 text-center bg-gray-100/50" colspan="3">04</th>
+                        </tr>
+                        <tr class="bg-gray-50 border-b text-gray-600 font-medium">
+                            <th class="py-2 px-4 text-left border-r"></th>`;
+            
+            months.forEach(m => {
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-14 font-normal text-[11px]">${m.name}</th>`;
+            });
+            tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
+
+            const yearStart = new Date('2026-01-01').getTime();
+            const totalYearMs = 365 * 24 * 60 * 60 * 1000;
+
+            function dateToPercent(dateStr) {
+                if (!dateStr) return 0;
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return 0;
+                let diff = d.getTime() - yearStart;
+                let pct = (diff / totalYearMs) * 100;
+                return Math.max(0, Math.min(100, pct));
+            }
+
             Object.values(machineMap).forEach(group => {
-                const div = document.createElement('div');
-                div.className = 'border rounded-xl p-4 bg-gray-50 flex flex-col gap-3 shadow-sm hover:shadow-md transition';
-                
-                let headerInfo = `<div class="text-xs font-bold text-gray-700 flex items-center justify-between flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.dept}</span> / 
-                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.clazz}</span> / 
-                        <span class="text-blue-600 text-sm font-extrabold">${group.machine}</span>
-                    </div>
-                </div>`;
-                
                 let planItem = null;
                 let actualItem = null;
 
@@ -514,121 +505,63 @@
                     else if (type.includes('實際')) actualItem = row;
                 });
 
-                let planStart = planItem ? formatDateClean(planItem[4]) : '';
-                let planEnd = planItem ? formatDateClean(planItem[5]) : '';
-                let actualStart = actualItem ? formatDateClean(actualItem[4]) : '';
-                let actualEnd = actualItem ? formatDateClean(actualItem[5]) : '';
-                let hasActualEnd = actualEnd && actualEnd.trim() !== '';
-                
-                let isDelayed = false;
-                if (actualItem) {
-                    const typeStr = String(actualItem[3] || '');
-                    if (typeStr.includes('落後')) {
-                        isDelayed = true;
-                    } else if (planStart && actualStart && actualStart > planStart) {
-                        isDelayed = true;
-                    } else if (hasActualEnd && planEnd && actualEnd > planEnd) {
-                        isDelayed = true;
-                    } else if (!hasActualEnd && planEnd) {
-                        const pEndDate = new Date(planEnd);
-                        if (!isNaN(pEndDate) && pEndDate < today) {
-                            isDelayed = true;
-                        }
-                    }
-                }
+                const renderBarRow = (item, labelText, defaultColor) => {
+                    if (!item) return '';
+                    const startVal = item[4] || '';
+                    const endVal = item[5] || '';
+                    const startPct = dateToPercent(startVal);
+                    const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 15);
+                    const widthPct = Math.max(3, endPct - startPct);
 
-                let isCompleted = hasActualEnd && !isDelayed;
-                let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
+                    let barColor = defaultColor;
+                    const typeStr = String(item[3] || '');
+                    if (typeStr.includes('落後')) barColor = 'bg-rose-500';
+                    else if (typeStr.includes('完成')) barColor = 'bg-cyan-500';
+                    else if (typeStr.includes('實際')) barColor = 'bg-emerald-500';
 
-                if (planItem) {
-                    contentHtml += `<div class="flex items-center space-x-2">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-900 border border-sky-400 shadow-sm">計畫</span>
-                        <span class="text-xs text-gray-600 font-medium">${planStart} ~ ${planEnd}</span>
+                    return `<div class="relative h-6 flex items-center my-1">
+                        <div class="absolute h-4 rounded-full ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
+                            <span class="truncate">${labelText}</span>
+                        </div>
                     </div>`;
+                };
+
+                tableHtml += `<tr class="hover:bg-gray-50/80 transition">
+                    <td class="py-3 px-4 border-r align-top">
+                        <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
+                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
+                    </td>`;
+
+                months.forEach(() => {
+                    tableHtml += `<td class="border-r border-gray-100 p-0"></td>`;
+                });
+                tableHtml += `</tr>`;
+
+                // 畫 bar 所在的疊加列
+                tableHtml += `<tr class="border-b bg-gray-50/30">
+                    <td class="py-2 px-4 border-r text-right text-xs text-gray-400 font-medium">進度條</td>
+                    <td colspan="12" class="px-2 relative">
+                        <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
+                for(let i=0; i<12; i++) {
+                    tableHtml += `<div class="border-r border-gray-200/60 h-full"></div>`;
                 }
-
-                if (actualItem) {
-                    let actualBadgeClass = 'bg-emerald-500 text-white';
-                    let actualLabel = '實際正常';
-                    if (isDelayed) {
-                        actualBadgeClass = 'bg-rose-500 text-white';
-                        actualLabel = hasActualEnd ? '實際落後' : '實際 (未完工/落後)';
-                    } else if (isCompleted) {
-                        actualBadgeClass = 'bg-purple-600 text-white';
-                        actualLabel = '實際已完成';
-                    }
-                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
-                    contentHtml += `<div class="flex items-center space-x-2 mt-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass} shadow-sm">${actualLabel}</span>
-                        <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
-                    </div>`;
-                }
-
-                let matrixHtml = '<div class="pt-2"><div class="flex space-x-1.5 overflow-x-auto pb-1">';
-                if (monthCols.length > 0) {
-                    monthCols.forEach(m => {
-                        const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
-                        const pActive = pVal !== '' && pVal !== '0';
-                        const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900 shadow-sm' : 'bg-gray-200/70';
-
-                        const aVal = actualItem ? String(actualItem[m.index] || '').trim() : '';
-                        const aActive = aVal !== '' && aVal !== '0';
-                        let aCellBg = 'bg-gray-200/70';
-                        if (aActive) {
-                            if (isDelayed) aCellBg = 'bg-rose-500 text-white shadow-sm';
-                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white shadow-sm';
-                            else aCellBg = 'bg-emerald-500 text-white shadow-sm';
-                        }
-
-                        matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
-                            <span class="text-[11px] text-gray-500 font-semibold">${m.name}</span>
-                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold">${pActive ? '✓' : ''}</div>
-                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold">${aActive ? '✓' : ''}</div>
-                        </div>`;
-                    });
-                }
-                matrixHtml += '</div></div>';
-                contentHtml += matrixHtml;
-
-                const currentNote = sheet.notes[group.keyName] || '';
-                let noteHtml = `<div class="mt-2 pt-2 border-t border-gray-200">
-                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">📝 備註 / 說明文字：</label>
-                    <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="點擊此處輸入該機台的備註或說明..." class="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>`;
-
-                contentHtml += noteHtml + '</div>';
-                div.innerHTML = headerInfo + contentHtml;
-                container.appendChild(div);
+                tableHtml += `</div>
+                        <div class="py-1">
+                            ${renderBarRow(planItem, '計畫', 'bg-amber-400')}
+                            ${renderBarRow(actualItem, '實際', 'bg-emerald-500')}
+                        </div>
+                    </td>
+                </tr>`;
             });
+
+            tableHtml += `</tbody></table></div>`;
+            container.innerHTML = tableHtml;
         }
 
         function exportGanttPNG() {
             const element = document.getElementById('gantt-export-area');
             const exportBtn = document.getElementById('export-btn');
-            
             exportBtn.style.display = 'none';
-
-            const noteInputs = element.querySelectorAll('input[data-note-input="true"]');
-            const replacementMap = [];
-
-            noteInputs.forEach(input => {
-                const div = document.createElement('div');
-                div.className = input.className + " flex items-center bg-white overflow-hidden";
-                div.style.height = input.offsetHeight + "px";
-                div.style.minHeight = "28px";
-                div.style.lineHeight = "normal";
-                div.style.padding = "4px 12px";
-                div.style.boxSizing = "border-box";
-                div.innerText = input.value || input.placeholder;
-                if (!input.value) {
-                    div.style.color = "#9ca3af";
-                } else {
-                    div.style.color = "#1f2937";
-                }
-                input.style.display = 'none';
-                input.parentNode.insertBefore(div, input);
-                replacementMap.push({ input, div });
-            });
 
             html2canvas(element, { 
                 scale: 2, 
@@ -636,22 +569,13 @@
                 logging: false,
                 windowWidth: element.scrollWidth
             }).then(canvas => {
-                replacementMap.forEach(item => {
-                    item.input.style.display = '';
-                    item.div.remove();
-                });
-
                 exportBtn.style.display = 'inline-block';
                 const link = document.createElement('a');
-                link.download = `${appData.sheets[currentSheetIndex].name}-甘特圖預覽.png`;
+                link.download = `${appData.sheets[currentSheetIndex].name}-傳統甘特圖.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             }).catch(err => {
                 console.error(err);
-                replacementMap.forEach(item => {
-                    item.input.style.display = '';
-                    item.div.remove();
-                });
                 exportBtn.style.display = 'inline-block';
             });
         }
@@ -687,8 +611,7 @@
                                 if (i === 4 || i === 5) {
                                     val = formatDateClean(val);
                                 }
-                                formVal = String(val);
-                                return formVal;
+                                return String(val);
                             });
                         });
                         
