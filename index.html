@@ -77,9 +77,9 @@
         </div>
 
         <!-- 主內容區 -->
-        <main class="flex-1 p-6 space-y-6 bg-gray-100">
+        <main class="flex-1 p-6 space-y-6 bg-gray-100 overflow-y-auto">
             <!-- 資料表格編輯區 -->
-            <div id="table-container-wrapper" class="bg-white rounded-xl shadow-sm border p-4 overflow-x-auto opacity-65 pointer-events-none transition">
+            <div id="table-container-wrapper" class="bg-white rounded-xl shadow-sm border p-4 transition">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="current-sheet-title" class="text-base font-bold text-gray-800">工作表名稱</h3>
                     <div class="space-x-2">
@@ -87,7 +87,7 @@
                         <button onclick="addRow()" class="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition">+ 新增列位</button>
                     </div>
                 </div>
-                <div class="max-h-96 overflow-y-auto border rounded-lg">
+                <div class="overflow-x-auto overflow-y-auto border rounded-lg" style="max-height: 300px;">
                     <table id="data-table" class="min-w-full divide-y divide-gray-200 text-xs"></table>
                 </div>
             </div>
@@ -98,7 +98,7 @@
                     <h3 class="text-base font-bold text-gray-800">📈 甘特圖與月份矩陣預覽</h3>
                     <div class="flex items-center space-x-4 flex-wrap gap-2">
                         <div class="flex items-center space-x-3 text-xs bg-gray-50 px-3 py-1.5 rounded-lg border">
-                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-200 border border-sky-400 inline-block mr-1 rounded"></span>計畫</span>
+                            <span class="flex items-center"><span class="w-3 h-3 bg-sky-300 border border-sky-500 inline-block mr-1 rounded"></span>計畫</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-emerald-500 inline-block mr-1 rounded"></span>實際正常</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
@@ -770,7 +770,7 @@
                     addMarker(left + Math.max(width - 10, 8), top + (height / 2) - 5, '#1f2937');
                 };
 
-                const planColor = '#f9c76b';
+                const planColor = '#93c5fd';
                 
                 let actualColor = '#5bc0be';
                 const statusType = determineActualStatus(planRow, actualRow);
