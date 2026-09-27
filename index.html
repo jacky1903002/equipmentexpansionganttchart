@@ -103,7 +103,7 @@
                             <span class="flex items-center"><span class="w-3 h-3 bg-rose-500 inline-block mr-1 rounded"></span>實際落後</span>
                             <span class="flex items-center"><span class="w-3 h-3 bg-purple-600 inline-block mr-1 rounded"></span>已完成</span>
                         </div>
-                        <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
+                        <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出 PNG</button>
                     </div>
                 </div>
                 <div id="gantt-container" class="space-y-4 overflow-x-auto py-2"></div>
@@ -261,7 +261,13 @@
                             columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期", "2026/01/01", "2026/02/01", "2026/03/01", "2026/04/01", "2026/05/01", "2026/06/01", "2026/07/01", "2026/08/01", "2026/09/01", "2026/10/01", "2026/11/01", "2026/12/01"],
                             rows: [
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026/01/01", "2026/08/15", "1", "1", "1", "1", "1", "1", "1", "1", "", "", "", ""],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "實際", "2026/03/01", "", "", "", "1", "1", "1", "1", "1", "1", "", "", "", ""],
+                                ["製造二部", "金屬二課", "銑床改3+1", "計畫", "2026/01/01", "2026/03/15", "1", "1", "1", "", "", "", "", "", "", "", "", ""],
+                                ["製造二部", "金屬二課", "銑床改3+1", "實際", "2026/01/01", "2026/03/15", "1", "1", "1", "", "", "", "", "", "", "", "", ""],
+                                ["製造二部", "金屬二課", "銑床改3+2", "計畫", "2026/02/01", "2026/04/15", "", "1", "1", "1", "", "", "", "", "", "", "", ""],
+                                ["製造二部", "金屬二課", "銑床改3+2", "實際", "2026/01/30", "", "1", "1", "1", "1", "", "", "", "", "", "", "", ""],
+                                ["製造二部", "金屬三課", "銑床改3+4", "計畫", "2026/02/01", "2026/04/15", "", "1", "1", "1", "", "", "", "", "", "", "", ""],
+                                ["製造二部", "金屬三課", "銑床改3+4", "實際", "2026/01/30", "", "", "1", "1", "1", "1", "1", "", "", "", "", "", ""],
                             ],
                             notes: {}
                         }]
@@ -343,7 +349,7 @@
             sheet.columns.forEach((col, cIdx) => {
                 html += `<th class="px-3 py-2 text-left font-medium text-gray-600 uppercase tracking-wider border-b">
                     <div class="flex items-center space-x-1">
-                        <input type="text" value="${col}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-24 text-xs font-semibold">
+                        <input type="text" value="${col}" ${!isLoggedIn ? 'disabled' : ''} onchange="updateColumnName(${cIdx}, this.value)" class="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-500 w-full" />
                         ${isLoggedIn ? `<button onclick="deleteColumn(${cIdx})" class="text-red-500 hover:text-red-700 text-xs px-1">✕</button>` : ''}
                     </div>
                 </th>`;
@@ -357,7 +363,7 @@
                 sheet.columns.forEach((_, cIdx) => {
                     const val = row[cIdx] !== undefined ? row[cIdx] : '';
                     html += `<td class="px-3 py-1.5 whitespace-nowrap border-b">
-                        <input type="text" value="${val}" ${!isLoggedIn ? 'disabled' : ''} oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded text-xs text-gray-800">
+                        <input type="text" value="${val}" ${!isLoggedIn ? 'disabled' : ''} oninput="updateCellInstant(${rIdx}, ${cIdx}, this.value)" onchange="updateCell(${rIdx}, ${cIdx}, this.value)" class="w-full bg-transparent border-none focus:outline-none" />
                     </td>`;
                 });
                 if (isLoggedIn) {
@@ -443,163 +449,320 @@
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            const today = new Date('2026-09-25');
-            const monthCols = [];
-            const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
-            sheet.columns.forEach((col, idx) => {
-                let cStr = String(col || '').trim();
-                let isMonthCol = false;
-                let displayName = cStr;
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-                if (cStr.includes('/') || cStr.includes('-') || monthNamesShort.some(m => cStr.includes(m))) {
-                    const d = new Date(cStr);
-                    if (!isNaN(d.getTime())) {
-                        const yr = String(d.getFullYear()).slice(-2);
-                        const moIdx = d.getMonth();
-                        displayName = `${monthNamesShort[moIdx]}-${yr}`;
+            function parseDateValue(value) {
+                if (value === null || value === undefined) return null;
+                const raw = String(value).trim();
+                if (!raw) return null;
+
+                const monthMap = {
+                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                };
+
+                const shortMonth = raw.match(/^([A-Za-z]{3})-(\d{2,4})$/i);
+                if (shortMonth) {
+                    const monthKey = shortMonth[1].charAt(0).toUpperCase() + shortMonth[1].slice(1).toLowerCase();
+                    const monthIndex = monthMap[monthKey];
+                    if (monthIndex !== undefined) {
+                        const rawYear = shortMonth[2];
+                        const year = rawYear.length === 2 ? 2000 + Number(rawYear) : Number(rawYear);
+                        return new Date(year, monthIndex, 1);
                     }
-                    isMonthCol = true;
                 }
-                
-                if (idx >= 6 || isMonthCol) {
-                    if (idx >= 6) {
-                        isMonthCol = true;
-                        const d = new Date(cStr);
-                        if (!isNaN(d.getTime())) {
-                            const yr = String(d.getFullYear()).slice(-2);
-                            const moIdx = d.getMonth();
-                            displayName = `${monthNamesShort[moIdx]}-${yr}`;
+
+                const normalized = raw.replace(/-/g, '/');
+                const direct = new Date(normalized);
+                if (!isNaN(direct.getTime())) return direct;
+
+                const match = normalized.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+                if (match) {
+                    const year = Number(match[3].length === 2 ? '20' + match[3] : match[3]);
+                    const month = Number(match[1]) - 1;
+                    const day = Number(match[2]);
+                    return new Date(year, month, day);
+                }
+
+                const iso = new Date(raw);
+                if (!isNaN(iso.getTime())) return iso;
+                return null;
+            }
+
+            function monthDisplayName(date) {
+                return monthNames[date.getMonth()];
+            }
+
+            function monthDisplayLabel(date) {
+                return `${monthDisplayName(date)}-${String(date.getFullYear()).slice(-2)}`;
+            }
+
+            function resolveMonthSequence() {
+                const monthDateColumns = [];
+                sheet.columns.forEach((col, idx) => {
+                    if (idx < 6) return;
+                    const parsed = parseDateValue(col);
+                    if (parsed) {
+                        monthDateColumns.push(parsed);
+                    }
+                });
+
+                let start = new Date(2026, 0, 1);
+                let end = new Date(2026, 11, 31);
+
+                if (monthDateColumns.length > 0) {
+                    const sorted = monthDateColumns.sort((a, b) => a - b);
+                    start = new Date(sorted[0].getFullYear(), sorted[0].getMonth(), 1);
+                    end = new Date(sorted[sorted.length - 1].getFullYear(), sorted[sorted.length - 1].getMonth(), 31);
+                }
+
+                const months = [];
+                const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+                const last = new Date(end.getFullYear(), end.getMonth(), 1);
+                while (cursor <= last) {
+                    months.push(new Date(cursor));
+                    cursor.setMonth(cursor.getMonth() + 1);
+                }
+
+                return { start, end, months };
+            }
+
+            function resolveTaskDates(taskRow) {
+                let start = parseDateValue(taskRow[4]);
+                let end = parseDateValue(taskRow[5]);
+
+                if ((!start || !end) && taskRow.length > 6) {
+                    const activeMonths = [];
+                    sheet.columns.forEach((col, idx) => {
+                        if (idx < 6) return;
+                        const val = taskRow[idx];
+                        const valueText = String(val ?? '').trim();
+                        if (valueText && valueText !== '0') {
+                            const parsed = parseDateValue(col);
+                            if (parsed) activeMonths.push(parsed);
                         }
+                    });
+
+                    if (activeMonths.length > 0) {
+                        const ordered = activeMonths.sort((a, b) => a - b);
+                        if (!start) start = new Date(ordered[0].getFullYear(), ordered[0].getMonth(), 1);
+                        if (!end) end = new Date(ordered[ordered.length - 1].getFullYear(), ordered[ordered.length - 1].getMonth(), 1);
                     }
                 }
 
-                if (isMonthCol) {
-                    monthCols.push({ name: displayName, originalName: cStr, index: idx });
-                }
+                if (!start && !end) return { start: null, end: null };
+                if (!start && end) start = new Date(end.getFullYear(), end.getMonth(), 1);
+                if (!end && start) end = new Date(start.getFullYear(), start.getMonth(), 1);
+                return { start, end };
+            }
+
+            const { start: rangeStart, end: rangeEnd, months } = resolveMonthSequence();
+            const monthWidth = 90;
+            const ganttWidth = months.length * monthWidth;
+
+            const headerWrap = document.createElement('div');
+            headerWrap.style.display = 'flex';
+            headerWrap.style.width = `${180 + ganttWidth}px`;
+            headerWrap.style.marginBottom = '8px';
+
+            const leftHeader = document.createElement('div');
+            leftHeader.style.width = '180px';
+            leftHeader.style.padding = '10px 12px';
+            leftHeader.style.border = '1px solid #dfe5eb';
+            leftHeader.style.borderRight = 'none';
+            leftHeader.style.borderRadius = '8px 0 0 0';
+            leftHeader.style.background = '#f8fafc';
+            leftHeader.style.fontSize = '11px';
+            leftHeader.style.fontWeight = '700';
+            leftHeader.style.color = '#475569';
+            leftHeader.textContent = '任務';
+
+            const rightHeader = document.createElement('div');
+            rightHeader.style.width = `${ganttWidth}px`;
+            rightHeader.style.border = '1px solid #dfe5eb';
+            rightHeader.style.borderRadius = '0 8px 0 0';
+            rightHeader.style.background = '#f8fafc';
+            rightHeader.style.overflow = 'hidden';
+
+            const quarterRow = document.createElement('div');
+            quarterRow.style.display = 'flex';
+            quarterRow.style.height = '30px';
+            quarterRow.style.borderBottom = '1px solid #dfe5eb';
+
+            let quarterIndex = 0;
+            while (quarterIndex < months.length) {
+                const chunkSize = Math.min(3, months.length - quarterIndex);
+                const qCell = document.createElement('div');
+                qCell.style.width = `${chunkSize * monthWidth}px`;
+                qCell.style.display = 'flex';
+                qCell.style.alignItems = 'center';
+                qCell.style.justifyContent = 'center';
+                qCell.style.fontSize = '12px';
+                qCell.style.fontWeight = '700';
+                qCell.style.color = '#475569';
+                qCell.style.borderRight = '1px solid #dfe5eb';
+                qCell.textContent = String(Math.floor(quarterIndex / 3) + 1).padStart(2, '0');
+                quarterRow.appendChild(qCell);
+                quarterIndex += chunkSize;
+            }
+
+            const monthRow = document.createElement('div');
+            monthRow.style.display = 'flex';
+            monthRow.style.height = '36px';
+
+            months.forEach((monthDate) => {
+                const cell = document.createElement('div');
+                cell.style.width = `${monthWidth}px`;
+                cell.style.display = 'flex';
+                cell.style.alignItems = 'center';
+                cell.style.justifyContent = 'center';
+                cell.style.fontSize = '11px';
+                cell.style.fontWeight = '700';
+                cell.style.color = '#475569';
+                cell.style.borderRight = '1px solid #dfe5eb';
+                cell.textContent = monthDisplayName(monthDate);
+                monthRow.appendChild(cell);
             });
 
-            const machineMap = {};
-            sheet.rows.forEach(row => {
+            rightHeader.appendChild(quarterRow);
+            rightHeader.appendChild(monthRow);
+            headerWrap.appendChild(leftHeader);
+            headerWrap.appendChild(rightHeader);
+            container.appendChild(headerWrap);
+
+            const groupMap = {};
+            sheet.rows.forEach((row) => {
                 const dept = row[0] || '';
                 const clazz = row[1] || '';
                 const machine = row[2] || '未命名機台';
-                const key = `${dept}_${clazz}_${machine}`;
-                if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, items: [], keyName: key };
+                const key = `${dept}|${clazz}|${machine}`;
+
+                if (!groupMap[key]) {
+                    groupMap[key] = { dept, clazz, machine, rows: [] };
                 }
-                machineMap[key].items.push(row);
+                groupMap[key].rows.push(row);
             });
 
-            if (!sheet.notes) sheet.notes = {};
+            const tableWrap = document.createElement('div');
+            tableWrap.style.width = `${180 + ganttWidth}px`;
+            tableWrap.style.border = '1px solid #dfe5eb';
+            tableWrap.style.borderRadius = '10px';
+            tableWrap.style.overflow = 'hidden';
+            tableWrap.style.background = '#ffffff';
 
-            Object.values(machineMap).forEach(group => {
-                const div = document.createElement('div');
-                div.className = 'border rounded-xl p-4 bg-gray-50 flex flex-col gap-3 shadow-sm hover:shadow-md transition';
-                
-                let headerInfo = `<div class="text-xs font-bold text-gray-700 flex items-center justify-between flex-wrap gap-2">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.dept}</span> / 
-                        <span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${group.clazz}</span> / 
-                        <span class="text-blue-600 text-sm font-extrabold">${group.machine}</span>
-                    </div>
-                </div>`;
-                
-                let planItem = null;
-                let actualItem = null;
+            const groups = Object.values(groupMap);
+            groups.forEach((group) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.minHeight = '58px';
+                row.style.borderBottom = '1px solid #e5e7eb';
+                row.style.background = '#ffffff';
 
-                group.items.forEach(row => {
-                    const type = String(row[3] || '');
-                    if (type.includes('計畫')) planItem = row;
-                    else if (type.includes('實際')) actualItem = row;
+                const labelCell = document.createElement('div');
+                labelCell.style.width = '180px';
+                labelCell.style.padding = '12px 12px';
+                labelCell.style.display = 'flex';
+                labelCell.style.flexDirection = 'column';
+                labelCell.style.justifyContent = 'center';
+                labelCell.style.borderRight = '1px solid #e5e7eb';
+                labelCell.style.background = '#f8fafc';
+                labelCell.innerHTML = `<div style="font-size:15px; font-weight:700; color:#334155;">${group.machine}</div><div style="font-size:11px; color:#64748b; margin-top:2px;">${group.dept} / ${group.clazz}</div>`;
+
+                const timelineCell = document.createElement('div');
+                timelineCell.style.position = 'relative';
+                timelineCell.style.width = `${ganttWidth}px`;
+                timelineCell.style.height = '58px';
+                timelineCell.style.background = 'linear-gradient(to right, rgba(148, 163, 184, 0.08), rgba(148, 163, 184, 0.02))';
+
+                const grid = document.createElement('div');
+                grid.style.position = 'absolute';
+                grid.style.inset = '0';
+                grid.style.display = 'flex';
+                grid.style.pointerEvents = 'none';
+                months.forEach(() => {
+                    const cell = document.createElement('div');
+                    cell.style.width = `${monthWidth}px`;
+                    cell.style.borderRight = '1px solid rgba(148, 163, 184, 0.35)';
+                    cell.style.height = '100%';
+                    cell.style.background = 'rgba(255,255,255,0.12)';
+                    grid.appendChild(cell);
                 });
+                timelineCell.appendChild(grid);
 
-                let planStart = planItem ? formatDateClean(planItem[4]) : '';
-                let planEnd = planItem ? formatDateClean(planItem[5]) : '';
-                let actualStart = actualItem ? formatDateClean(actualItem[4]) : '';
-                let actualEnd = actualItem ? formatDateClean(actualItem[5]) : '';
-                let hasActualEnd = actualEnd && actualEnd.trim() !== '';
-                
-                let isDelayed = false;
-                if (actualItem) {
-                    const typeStr = String(actualItem[3] || '');
-                    if (typeStr.includes('落後')) {
-                        isDelayed = true;
-                    } else if (planStart && actualStart && actualStart > planStart) {
-                        isDelayed = true;
-                    } else if (hasActualEnd && planEnd && actualEnd > planEnd) {
-                        isDelayed = true;
-                    } else if (!hasActualEnd && planEnd) {
-                        const pEndDate = new Date(planEnd);
-                        if (!isNaN(pEndDate) && pEndDate < today) {
-                            isDelayed = true;
-                        }
+                const planRow = group.rows.find((r) => String(r[3] || '').includes('計畫')) || null;
+                const actualRow = group.rows.find((r) => String(r[3] || '').includes('實際')) || null;
+
+                const addMarker = (x, y, color) => {
+                    const marker = document.createElement('div');
+                    marker.style.position = 'absolute';
+                    marker.style.left = `${x}px`;
+                    marker.style.top = `${y}px`;
+                    marker.style.width = '10px';
+                    marker.style.height = '10px';
+                    marker.style.background = color;
+                    marker.style.transform = 'rotate(45deg)';
+                    marker.style.border = '1px solid rgba(15, 23, 42, 0.35)';
+                    marker.style.boxShadow = '0 1px 2px rgba(15, 23, 42, 0.15)';
+                    timelineCell.appendChild(marker);
+                };
+
+                const addBar = (task, color, top, height, opacity = 1) => {
+                    if (!task) return;
+                    const dates = resolveTaskDates(task);
+                    let startDate = dates.start;
+                    let endDate = dates.end;
+                    if (!startDate || !endDate) return;
+
+                    if (endDate < startDate) {
+                        const tmp = endDate;
+                        endDate = startDate;
+                        startDate = tmp;
+                    }
+
+                    const totalRangeMs = (rangeEnd.getTime() - rangeStart.getTime()) + 86400000;
+                    const startMs = startDate.getTime() - rangeStart.getTime();
+                    const endMs = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate() + 1).getTime() - rangeStart.getTime();
+                    const left = (startMs / totalRangeMs) * ganttWidth;
+                    const width = Math.max(((endMs - startMs) / totalRangeMs) * ganttWidth, 10);
+
+                    const bar = document.createElement('div');
+                    bar.style.position = 'absolute';
+                    bar.style.left = `${left}px`;
+                    bar.style.width = `${width}px`;
+                    bar.style.top = `${top}px`;
+                    bar.style.height = `${height}px`;
+                    bar.style.borderRadius = '9999px';
+                    bar.style.background = color;
+                    bar.style.opacity = opacity;
+                    bar.style.boxShadow = '0 3px 8px rgba(15, 23, 42, 0.12)';
+                    bar.style.border = '1px solid rgba(15, 23, 42, 0.08)';
+                    bar.style.zIndex = '2';
+                    timelineCell.appendChild(bar);
+
+                    addMarker(left, top + (height / 2) - 5, '#1f2937');
+                    addMarker(left + Math.max(width - 10, 8), top + (height / 2) - 5, '#1f2937');
+                };
+
+                const planColor = '#f9c76b';
+                let actualColor = '#5bc0be';
+                if (actualRow) {
+                    const actualType = String(actualRow[3] || '').trim();
+                    if (actualType.includes('落後')) {
+                        actualColor = '#f26b6b';
+                    } else if (actualType.includes('已完成') || actualType.includes('完成')) {
+                        actualColor = '#7f8cf7';
                     }
                 }
 
-                let isCompleted = hasActualEnd && !isDelayed;
-                let contentHtml = '<div class="space-y-2 pl-3 border-l-2 border-blue-400">';
+                if (planRow) addBar(planRow, planColor, 12, 18, 1);
+                if (actualRow) addBar(actualRow, actualColor, 26, 14, 0.95);
 
-                if (planItem) {
-                    contentHtml += `<div class="flex items-center space-x-2">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-sky-200 text-sky-900 border border-sky-400 shadow-sm">計畫</span>
-                        <span class="text-xs text-gray-600 font-medium">${planStart} ~ ${planEnd}</span>
-                    </div>`;
-                }
-
-                if (actualItem) {
-                    let actualBadgeClass = 'bg-emerald-500 text-white';
-                    let actualLabel = '實際正常';
-                    if (isDelayed) {
-                        actualBadgeClass = 'bg-rose-500 text-white';
-                        actualLabel = hasActualEnd ? '實際落後' : '實際 (未完工/落後)';
-                    } else if (isCompleted) {
-                        actualBadgeClass = 'bg-purple-600 text-white';
-                        actualLabel = '實際已完成';
-                    }
-                    let actualDateStr = hasActualEnd ? `${actualStart} ~ ${actualEnd}` : `${actualStart} ~ (未完工)`;
-                    contentHtml += `<div class="flex items-center space-x-2 mt-1">
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold ${actualBadgeClass} shadow-sm">${actualLabel}</span>
-                        <span class="text-xs text-gray-600 font-medium">${actualDateStr}</span>
-                    </div>`;
-                }
-
-                let matrixHtml = '<div class="pt-2"><div class="flex space-x-1.5 overflow-x-auto pb-1">';
-                if (monthCols.length > 0) {
-                    monthCols.forEach(m => {
-                        const pVal = planItem ? String(planItem[m.index] || '').trim() : '';
-                        const pActive = pVal !== '' && pVal !== '0';
-                        const pCellBg = pActive ? 'bg-sky-200 border border-sky-400 text-sky-900 shadow-sm' : 'bg-gray-200/70';
-
-                        const aVal = actualItem ? String(actualItem[m.index] || '').trim() : '';
-                        const aActive = aVal !== '' && aVal !== '0';
-                        let aCellBg = 'bg-gray-200/70';
-                        if (aActive) {
-                            if (isDelayed) aCellBg = 'bg-rose-500 text-white shadow-sm';
-                            else if (isCompleted) aCellBg = 'bg-purple-600 text-white shadow-sm';
-                            else aCellBg = 'bg-emerald-500 text-white shadow-sm';
-                        }
-
-                        matrixHtml += `<div class="flex flex-col items-center flex-1 min-w-[55px] gap-1">
-                            <span class="text-[11px] text-gray-500 font-semibold">${m.name}</span>
-                            <div class="w-full h-6 rounded ${pCellBg} flex items-center justify-center text-[11px] font-bold">${pActive ? '✓' : ''}</div>
-                            <div class="w-full h-6 rounded ${aCellBg} flex items-center justify-center text-[11px] font-bold">${aActive ? '✓' : ''}</div>
-                        </div>`;
-                    });
-                }
-                matrixHtml += '</div></div>';
-                contentHtml += matrixHtml;
-
-                const currentNote = sheet.notes[group.keyName] || '';
-                let noteHtml = `<div class="mt-2 pt-2 border-t border-gray-200">
-                    <label class="block text-[11px] font-semibold text-gray-500 mb-1">📝 備註 / 說明文字：</label>
-                    <input type="text" value="${currentNote}" data-note-input="true" ${!isLoggedIn ? 'disabled' : ''} onchange="updateMachineNote('${group.keyName}', this.value)" placeholder="點擊此處輸入該機台的備註或說明..." class="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>`;
-
-                contentHtml += noteHtml + '</div>';
-                div.innerHTML = headerInfo + contentHtml;
-                container.appendChild(div);
+                row.appendChild(labelCell);
+                row.appendChild(timelineCell);
+                tableWrap.appendChild(row);
             });
+
+            container.appendChild(tableWrap);
         }
 
         function exportGanttPNG() {
