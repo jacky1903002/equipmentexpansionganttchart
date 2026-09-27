@@ -430,7 +430,7 @@
             renderApp();
         }
 
-        // 渲染緊湊直落式甘特圖
+        // 渲染完全單行整合的甘特圖
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -495,7 +495,7 @@
                     else if (type.includes('實際')) actualItem = row;
                 });
 
-                const renderBar = (item, labelText, defaultColor) => {
+                const renderBar = (item, labelText, defaultColor, topClass) => {
                     if (!item) return '';
                     const startVal = item[4] || '';
                     const endVal = item[5] || '';
@@ -509,39 +509,30 @@
                     else if (typeStr.includes('完成')) barColor = 'bg-cyan-500';
                     else if (typeStr.includes('實際')) barColor = 'bg-emerald-500';
 
-                    return `<div class="relative h-5 flex items-center my-0.5">
-                        <div class="absolute h-4 rounded-full ${barColor} shadow-sm flex items-center px-2 text-[10px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
-                            <span class="truncate">${labelText}</span>
-                        </div>
+                    return `<div class="absolute ${topClass} h-3.5 rounded-full ${barColor} shadow-sm flex items-center px-1.5 text-[9px] text-white font-semibold truncate" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="truncate">${labelText}</span>
                     </div>`;
                 };
 
-                // 將任務名稱與對應的計畫/實際長條直接在同一列中呈現
+                // 將機台名稱與圖表整合在同一列（直接跨 12 個月份格子）
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
                     <td class="py-3 px-4 border-r align-middle w-64">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                // 畫 12 個月份的背景網格線，並在儲存格內直接放入進度條容器
-                months.forEach(() => {
-                    tableHtml += `<td class="border-r border-gray-100 p-0 relative"></td>`;
-                });
-                tableHtml += `</tr>`;
-
-                // 緊接著的長條融合列
-                tableHtml += `<tr class="border-b bg-gray-50/20">
-                    <td class="py-1 px-4 border-r text-right text-[11px] text-gray-400 font-medium">進度條</td>
-                    <td colspan="12" class="px-2 relative py-1">
-                        <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
+                // 跨 12 個月份欄位，內含背景格線與上下並排的計畫/實際長條
+                tableHtml += `<td colspan="12" class="p-0 relative h-12">
+                    <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
                 for(let i=0; i<12; i++) {
-                    tableHtml += `<div class="border-r border-gray-200/50 h-full"></div>`;
+                    tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                        ${renderBar(planItem, '計畫', 'bg-amber-400')}
-                        ${renderBar(actualItem, '實際', 'bg-emerald-500')}
-                    </td>
-                </tr>`;
+                    ${renderBar(planItem, '計畫', 'bg-amber-400', 'top-1')}
+                    ${renderBar(actualItem, '實際', 'bg-emerald-500', 'top-6')}
+                </td>`;
+
+                tableHtml += `</tr>`;
             });
 
             tableHtml += `</tbody></table></div>`;
@@ -605,7 +596,7 @@
                             });
                         });
                         
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length].fill("")], notes: {} });
                     }
                 });
                 if (newSheets.length > 0) {
