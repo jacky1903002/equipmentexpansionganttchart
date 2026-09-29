@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>機台擴張甘特圖管理系統 - 雲端授權版</title>
+    <title>機台擴張甘特圖管理系統 - 跨年動態版</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS -->
@@ -11,14 +11,14 @@
     <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <!-- Firebase SDK v8 (穩定相容版本) -->
+    <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans antialiased relative">
 
-    <!-- 登入覆蓋遮罩 (預設顯示) -->
+    <!-- 登入覆蓋遮罩 -->
     <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-6">
             <div class="text-center space-y-2">
@@ -48,7 +48,7 @@
     <div class="flex flex-col min-h-screen">
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">雲端授權版</span>
+                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">跨年動態版</span>
             </h1>
             <div class="flex items-center space-x-4">
                 <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 連線中...</span>
@@ -206,15 +206,6 @@
                 .catch((error) => {
                     console.error("Firebase Login Error:", error);
                     let msg = "登入失敗：" + error.message;
-                    if (error.code === 'auth/user-not-found') {
-                        msg = "登入失敗：此電子郵件尚未在 Firebase 建立帳號。";
-                    } else if (error.code === 'auth/wrong-password') {
-                        msg = "登入失敗：密碼錯誤。";
-                    } else if (error.code === 'auth/invalid-email') {
-                        msg = "登入失敗：電子郵件格式錯誤。";
-                    } else if (error.code === 'auth/operation-not-allowed') {
-                        msg = "登入失敗：尚未在 Firebase 後台啟用「電子郵件/密碼 (Email/Password)」登入功能！";
-                    }
                     errEl.innerText = msg;
                     errEl.classList.remove('hidden');
                 });
@@ -286,8 +277,8 @@
                             name: "機台擴張排程",
                             columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026-01-05", "2026-04-15"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "進行中", "2026-03-01", "2026-09-15"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026-01-05", "2027-04-15"],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "進行中", "2026-03-01", "2027-09-15"]
                             ],
                             notes: {}
                         }]
@@ -340,7 +331,7 @@
             appData.sheets.push({
                 name: name.trim(),
                 columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026-01-01", "2026-03-31"]],
+                rows: [["部門A", "課別A", "機台A", "計畫", "2026-01-01", "2027-03-31"]],
                 notes: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
@@ -458,21 +449,47 @@
             renderApp();
         }
 
+        // 動態計算甘特圖時間範圍（支援 2026, 2027...）
+        function getDynamicTimelineRange(sheetRows) {
+            let minYear = 2026;
+            let maxYear = 2027;
+
+            sheetRows.forEach(row => {
+                [row[4], row[5]].forEach(dateStr => {
+                    if (dateStr) {
+                        const d = new Date(dateStr);
+                        if (!isNaN(d.getTime())) {
+                            const y = d.getFullYear();
+                            if (y < minYear) minYear = y;
+                            if (y > maxYear) maxYear = y;
+                        }
+                    }
+                });
+            });
+
+            // 確保至少涵蓋兩年或根據資料動態延伸
+            const months = [];
+            for (let y = minYear; y <= maxYear; y++) {
+                const qMap = { 1:'01', 2:'01', 3:'01', 4:'02', 5:'02', 6:'02', 7:'03', 8:'03', 9:'03', 10:'04', 11:'04', 12:'04' };
+                const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                for (let m = 1; m <= 12; m++) {
+                    months.push({ year: y, name: mNames[m-1], q: 'Q' + qMap[m] || '01', monthNum: m });
+                }
+            }
+
+            const timelineStart = new Date(`${minYear}-01-01`).getTime();
+            const timelineEnd = new Date(`${maxYear}-12-31`).getTime();
+
+            return { minYear, maxYear, months, timelineStart, timelineEnd };
+        }
+
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            const months = [
-                { name: 'Jan', q: '2026' }, { name: 'Feb', q: '2026' }, { name: 'Mar', q: '2026' },
-                { name: 'Apr', q: '2026' }, { name: 'May', q: '2026' }, { name: 'Jun', q: '2026' },
-                { name: 'Jul', q: '2026' }, { name: 'Aug', q: '2026' }, { name: 'Sep', q: '2026' },
-                { name: 'Oct', q: '2026' }, { name: 'Nov', q: '2026' }, { name: 'Dec', q: '2026' },               
-                { name: 'Jan', q: '2027' }, { name: 'Feb', q: '2027' }, { name: 'Mar', q: '2027' },
-                { name: 'Apr', q: '2027' }, { name: 'May', q: '2027' }, { name: 'Jun', q: '2027' },
-                { name: 'Jul', q: '2027' }, { name: 'Aug', q: '2027' }, { name: 'Sep', q: '2027' },
-                { name: 'Oct', q: '2027' }, { name: 'Nov', q: '2027' }, { name: 'Dec', q: '2027' }
-            ];
+            const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows);
+            const totalMs = timelineEnd - timelineStart;
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -486,33 +503,61 @@
                 machineMap[key].items.push(row);
             });
 
+            // 按季分組計算表頭跨欄
+            const quarters = {};
+            months.forEach((m, idx) => {
+                const qKey = `${m.year}-${m.q}`;
+                if (!quarters[qKey]) quarters[qKey] = { year: m.year, q: m.q, count: 0 };
+                quarters[qKey].count++;
+            });
+
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
-                <table class="w-full border-collapse text-xs min-w-[900px]">
+                <table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-64">項目 / 資訊</th>
-                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">01</th>
-                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">02</th>
-                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">03</th>
-                            <th class="py-1 px-1 text-center bg-gray-100/50" colspan="3">04</th>
-                        </tr>
-                        <tr class="bg-gray-50 border-b text-gray-600 font-medium">
+                            <th class="py-2.5 px-4 text-left border-r w-64">項目 / 資訊</th>`;
+            
+            Object.values(quarters.forEach ? Object.values(quarters) : []).forEach(q => {}); // placeholder
+            // 簡化季別表頭
+            let currentQ = '';
+            let qCount = 0;
+            // 這裡直接動態產生季別
+            const qBlocks = [];
+            let lastKey = '';
+            months.forEach(m => {
+                const k = `${m.year} ${m.q.replace('Q','0')}`;
+                if (k !== lastKey) {
+                    if (lastKey) qBlocks.push({ name: lastKey, count: qCount });
+                    lastKey = k;
+                    qCount = 1;
+                } else {
+                    qCount++;
+                }
+            });
+            if (lastKey) qBlocks.push({ name: lastKey, count: qCount });
+
+            tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">01 (2026)</th>`;
+            if (maxYear >= 2027) {
+                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">02 (2027)</th>`;
+            }
+            if (maxYear >= 2028) {
+                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">03 (2028)</th>`;
+            }
+
+            tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
                             <th class="py-2 px-4 text-left border-r"></th>`;
             
             months.forEach(m => {
-                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-14 font-normal text-[11px]">${m.name}</th>`;
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name} (${m.year})</th>`;
             });
             tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
-
-            const yearStart = new Date('2026-01-01').getTime();
-            const totalYearMs = 365 * 24 * 60 * 60 * 1000;
 
             function dateToPercent(dateStr) {
                 if (!dateStr) return 0;
                 const d = new Date(dateStr);
                 if (isNaN(d.getTime())) return 0;
-                let diff = d.getTime() - yearStart;
-                let pct = (diff / totalYearMs) * 100;
+                let diff = d.getTime() - timelineStart;
+                let pct = (diff / totalMs) * 100;
                 return Math.max(0, Math.min(100, pct));
             }
 
@@ -531,7 +576,7 @@
                     const startVal = item[4] || '';
                     const endVal = item[5] || '';
                     const startPct = dateToPercent(startVal);
-                    const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 15);
+                    const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 10);
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
@@ -552,9 +597,8 @@
                         labelText = '計畫';
                     }
 
-                    // 調整：使用 flex items-center justify-start 確保文字完美垂直置中且靠左顯示
-                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2 text-[10px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
+                    return `<div class="absolute ${topClass} h-6 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2.5 text-[11px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="whitespace-nowrap drop-shadow-sm leading-none">${labelText}</span>
                     </div>`;
                 };
 
@@ -564,14 +608,14 @@
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                tableHtml += `<td colspan="12" class="p-0 relative h-16">
-                    <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
-                for(let i=0; i<12; i++) {
+                tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
+                    <div class="absolute inset-0 grid grid-cols-${months.length} pointer-events-none" style="grid-template-columns: repeat(${months.length}, minmax(0, 1fr));">`;
+                for(let i=0; i<months.length; i++) {
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, 'bg-amber-400', 'top-1')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-9')}
+                    ${renderBar(planItem, 'bg-amber-400', 'top-2')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -581,18 +625,14 @@
             container.innerHTML = tableHtml;
         }
 
-        // 英文版甘特圖渲染邏輯
+        // 英文版甘特圖渲染邏輯 (支援動態跨年)
         function renderGanttChartEN() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container-en');
             container.innerHTML = '';
 
-            const months = [
-                { name: 'Jan', q: 'Q1' }, { name: 'Feb', q: 'Q1' }, { name: 'Mar', q: 'Q1' },
-                { name: 'Apr', q: 'Q2' }, { name: 'May', q: 'Q2' }, { name: 'Jun', q: 'Q2' },
-                { name: 'Jul', q: 'Q3' }, { name: 'Aug', q: 'Q3' }, { name: 'Sep', q: 'Q3' },
-                { name: 'Oct', q: 'Q4' }, { name: 'Nov', q: 'Q4' }, { name: 'Dec', q: 'Q4' }
-            ];
+            const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows);
+            const totalMs = timelineEnd - timelineStart;
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -607,32 +647,33 @@
             });
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
-                <table class="w-full border-collapse text-xs min-w-[900px]">
+                <table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-64">Item / Information</th>
-                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">Q1</th>
-                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">Q2</th>
-                            <th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="3">Q3</th>
-                            <th class="py-1 px-1 text-center bg-gray-100/50" colspan="3">Q4</th>
-                        </tr>
-                        <tr class="bg-gray-50 border-b text-gray-600 font-medium">
+                            <th class="py-2.5 px-4 text-left border-r w-64">Item / Information</th>`;
+            
+            tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">Q1-Q4 (2026)</th>`;
+            if (maxYear >= 2027) {
+                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">Q1-Q4 (2027)</th>`;
+            }
+            if (maxYear >= 2028) {
+                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">Q1-Q4 (2028)</th>`;
+            }
+
+            tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
                             <th class="py-2 px-4 text-left border-r"></th>`;
             
             months.forEach(m => {
-                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-14 font-normal text-[11px]">${m.name}</th>`;
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name} (${m.year})</th>`;
             });
             tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
-
-            const yearStart = new Date('2026-01-01').getTime();
-            const totalYearMs = 365 * 24 * 60 * 60 * 1000;
 
             function dateToPercent(dateStr) {
                 if (!dateStr) return 0;
                 const d = new Date(dateStr);
                 if (isNaN(d.getTime())) return 0;
-                let diff = d.getTime() - yearStart;
-                let pct = (diff / totalYearMs) * 100;
+                let diff = d.getTime() - timelineStart;
+                let pct = (diff / totalMs) * 100;
                 return Math.max(0, Math.min(100, pct));
             }
 
@@ -651,7 +692,7 @@
                     const startVal = item[4] || '';
                     const endVal = item[5] || '';
                     const startPct = dateToPercent(startVal);
-                    const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 15);
+                    const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 10);
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
@@ -672,9 +713,8 @@
                         labelText = 'Plan';
                     }
 
-                    // 調整：使用 flex items-center justify-start 確保文字完美垂直置中且靠左顯示
-                    return `<div class="absolute ${topClass} h-5 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2 text-[10px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
-                        <span class="whitespace-nowrap drop-shadow-sm">${labelText}</span>
+                    return `<div class="absolute ${topClass} h-6 rounded-md ${barColor} shadow-sm flex items-center justify-start px-2.5 text-[11px] text-white font-bold overflow-hidden" style="left: ${startPct}%; width: ${widthPct}%;">
+                        <span class="whitespace-nowrap drop-shadow-sm leading-none">${labelText}</span>
                     </div>`;
                 };
 
@@ -684,14 +724,14 @@
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
-                tableHtml += `<td colspan="12" class="p-0 relative h-16">
-                    <div class="absolute inset-0 grid grid-cols-12 pointer-events-none">`;
-                for(let i=0; i<12; i++) {
+                tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
+                    <div class="absolute inset-0 grid grid-cols-${months.length} pointer-events-none" style="grid-template-columns: repeat(${months.length}, minmax(0, 1fr));">`;
+                for(let i=0; i<months.length; i++) {
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, 'bg-amber-400', 'top-1')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-9')}
+                    ${renderBar(planItem, 'bg-amber-400', 'top-2')}
+                    ${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -714,7 +754,7 @@
             }).then(canvas => {
                 exportBtn.style.display = 'inline-block';
                 const link = document.createElement('a');
-                link.download = `${appData.sheets[currentSheetIndex].name}-緊湊甘特圖.png`;
+                link.download = `${appData.sheets[currentSheetIndex].name}-跨年甘特圖.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             }).catch(err => {
