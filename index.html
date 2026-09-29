@@ -262,10 +262,14 @@
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
                         
-                        // 自動補齊「擺放位置」與「備註」欄位（相容舊資料）
+                        // 自動補齊必要欄位（相容舊資料）
                         if (!sheet.columns.includes("擺放位置") && !sheet.columns.includes("Location")) {
                             sheet.columns.splice(4, 0, "擺放位置");
                             sheet.rows.forEach(row => row.splice(4, 0, ""));
+                        }
+                        if (!sheet.columns.includes("機台數量") && !sheet.columns.includes("Machine Qty")) {
+                            sheet.columns.splice(3, 0, "機台數量");
+                            sheet.rows.forEach(row => row.splice(3, 0, "1"));
                         }
                         if (!sheet.columns.includes("備註") && !sheet.columns.includes("Remarks")) {
                             sheet.columns.push("備註");
@@ -509,6 +513,7 @@
             const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows, sheet.columns);
             const totalMs = timelineEnd - timelineStart;
 
+            // 動態尋找各欄位索引（具備強大容錯機制，即使欄位順序變動或未填也能正確抓取）
             const colDept = sheet.columns.findIndex(c => c.includes("部門") || c.toLowerCase().includes("dept"));
             const colClass = sheet.columns.findIndex(c => c.includes("課") || c.toLowerCase().includes("class"));
             const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
@@ -528,11 +533,30 @@
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
                 const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
                 
-                const key = `${dept}_${clazz}_${machine}_${location}`;
+                // 修正：以資料列本身的識別值作為群組依據（即使擺放位置空白或隨後變動也不會造成甘特圖錯亂）
+                const key = `${rIdx}_${machine}_${location}`;
                 if (!machineMap[key]) {
                     machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
                 machineMap[key].items.push(row);
+            });
+
+            // 重新修正迴圈中的 row 索引對應
+            let rowIndexCounter = 0;
+            const updatedMachineMap = {};
+            sheet.rows.forEach(row => {
+                const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
+                const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
+                const machine = colMachine !== -1 ? (row[colMachine] || '未命名機台') : (row[2] || '未命名機台');
+                const qty = colQty !== -1 ? (row[colQty] || '') : '';
+                const location = colLocation !== -1 ? (row[colLocation] || '') : '';
+                const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
+                
+                const key = `row_${rowIndexCounter++}_${machine}`;
+                if (!updatedMachineMap[key]) {
+                    updatedMachineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
+                }
+                updatedMachineMap[key].items.push(row);
             });
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
@@ -562,7 +586,7 @@
                 return Math.max(0, Math.min(100, pct));
             }
 
-            Object.values(machineMap).forEach(group => {
+            Object.values(updatedMachineMap).forEach(group => {
                 let planItem = null;
                 let activeItem = null;
 
@@ -649,7 +673,8 @@
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
-            const machineMap = {};
+            let rowIndexCounter = 0;
+            const updatedMachineMap = {};
             sheet.rows.forEach(row => {
                 const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
@@ -658,11 +683,11 @@
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
                 const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
 
-                const key = `${dept}_${clazz}_${machine}_${location}`;
-                if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
+                const key = `row_${rowIndexCounter++}_${machine}`;
+                if (!updatedMachineMap[key]) {
+                    updatedMachineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
-                machineMap[key].items.push(row);
+                updatedMachineMap[key].items.push(row);
             });
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
@@ -692,7 +717,7 @@
                 return Math.max(0, Math.min(100, pct));
             }
 
-            Object.values(machineMap).forEach(group => {
+            Object.values(updatedMachineMap).forEach(group => {
                 let planItem = null;
                 let activeItem = null;
 
