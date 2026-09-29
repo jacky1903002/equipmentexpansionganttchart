@@ -261,12 +261,18 @@
                     appData = data;
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
+                        // 確保包含「機台數量」欄位（相容舊資料）
+                        if (!sheet.columns.includes("機台數量") && !sheet.columns.includes("Machine Qty")) {
+                            sheet.columns.splice(3, 0, "機台數量");
+                            sheet.rows.forEach(row => row.splice(3, 0, "1"));
+                        }
                         sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
                         sheet.rows.forEach(row => {
-                            if (row.length > 4) {
-                                row[4] = formatDateClean(row[4]);
-                                row[5] = formatDateClean(row[5]);
-                            }
+                            // 修正欄位索引：若包含機台數量，日期通常在索引 5, 6
+                            const dateIdx1 = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
+                            const dateIdx2 = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
+                            if (dateIdx1 !== -1) row[dateIdx1] = formatDateClean(row[dateIdx1]);
+                            if (dateIdx2 !== -1) row[dateIdx2] = formatDateClean(row[dateIdx2]);
                         });
                     });
                     statusEl.className = "text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-medium";
@@ -275,10 +281,10 @@
                     appData = {
                         sheets: [{
                             name: "機台擴張排程",
-                            columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
+                            columns: ["部門", "課別", "機台", "機台數量", "類別", "開始日期", "完成日期"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "計畫", "2026-01-05", "2027-04-15"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "進行中", "2026-03-01", "2027-09-15"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "計畫", "2026-01-05", "2027-04-15"],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "進行中", "2026-03-01", "2027-09-15"]
                             ],
                             notes: {}
                         }]
@@ -330,8 +336,8 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["部門", "課別", "機台", "類別", "開始日期", "完成日期"],
-                rows: [["部門A", "課別A", "機台A", "計畫", "2026-01-01", "2027-03-31"]],
+                columns: ["部門", "課別", "機台", "機台數量", "類別", "開始日期", "完成日期"],
+                rows: [["部門A", "課別A", "機台A", "1", "計畫", "2026-01-01", "2027-03-31"]],
                 notes: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
@@ -404,10 +410,12 @@
 
         function updateCell(rIdx, cIdx, val) {
             if (!isLoggedIn) return;
-            if (cIdx === 4 || cIdx === 5) {
+            const sheet = appData.sheets[currentSheetIndex];
+            const colName = sheet.columns[cIdx] || "";
+            if (colName.includes("開始") || colName.includes("完成") || colName.toLowerCase().includes("start") || colName.toLowerCase().includes("end")) {
                 val = formatDateClean(val);
             }
-            appData.sheets[currentSheetIndex].rows[rIdx][cIdx] = val;
+            sheet.rows[rIdx][cIdx] = val;
             saveToCloud();
             renderApp();
         }
@@ -449,13 +457,22 @@
             renderApp();
         }
 
-        // 動態計算甘特圖時間範圍（支援 2026, 2027...）
-        function getDynamicTimelineRange(sheetRows) {
+        // 動態計算甘特圖時間範圍
+        function getDynamicTimelineRange(sheetRows, columns) {
             let minYear = 2026;
             let maxYear = 2027;
 
+            // 尋找日期欄位索引
+            const dateIndices = [];
+            columns.forEach((c, idx) => {
+                if (c.includes("開始") || c.includes("完成") || c.toLowerCase().includes("start") || c.toLowerCase().includes("end") || c.toLowerCase().includes("date")) {
+                    dateIndices.push(idx);
+                }
+            });
+
             sheetRows.forEach(row => {
-                [row[4], row[5]].forEach(dateStr => {
+                dateIndices.forEach(idx => {
+                    const dateStr = row[idx];
                     if (dateStr) {
                         const d = new Date(dateStr);
                         if (!isNaN(d.getTime())) {
@@ -467,13 +484,11 @@
                 });
             });
 
-            // 確保至少涵蓋兩年或根據資料動態延伸
             const months = [];
             for (let y = minYear; y <= maxYear; y++) {
-                const qMap = { 1:'01', 2:'01', 3:'01', 4:'02', 5:'02', 6:'02', 7:'03', 8:'03', 9:'03', 10:'04', 11:'04', 12:'04' };
                 const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 for (let m = 1; m <= 12; m++) {
-                    months.push({ year: y, name: mNames[m-1], q: 'Q' + qMap[m] || '01', monthNum: m });
+                    months.push({ year: y, name: mNames[m-1], monthNum: m });
                 }
             }
 
@@ -488,27 +503,29 @@
             const container = document.getElementById('gantt-container');
             container.innerHTML = '';
 
-            const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows);
+            const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows, sheet.columns);
             const totalMs = timelineEnd - timelineStart;
+
+            // 尋找欄位對應
+            const colDept = sheet.columns.findIndex(c => c.includes("部門") || c.toLowerCase().includes("dept"));
+            const colClass = sheet.columns.findIndex(c => c.includes("課") || c.toLowerCase().includes("class"));
+            const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
+            const colQty = sheet.columns.findIndex(c => c.includes("數量") || c.toLowerCase().includes("qty") || c.toLowerCase().includes("quantity"));
+            const colType = sheet.columns.findIndex(c => c.includes("類別") || c.toLowerCase().includes("type") || c.toLowerCase().includes("status"));
+            const colStart = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
+            const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
-                const dept = row[0] || '';
-                const clazz = row[1] || '';
-                const machine = row[2] || '未命名機台';
+                const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
+                const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
+                const machine = colMachine !== -1 ? (row[colMachine] || '未命名機台') : (row[2] || '未命名機台');
+                const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const key = `${dept}_${clazz}_${machine}`;
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, items: [] };
+                    machineMap[key] = { dept, clazz, machine, qty, items: [] };
                 }
                 machineMap[key].items.push(row);
-            });
-
-            // 按季分組計算表頭跨欄
-            const quarters = {};
-            months.forEach((m, idx) => {
-                const qKey = `${m.year}-${m.q}`;
-                if (!quarters[qKey]) quarters[qKey] = { year: m.year, q: m.q, count: 0 };
-                quarters[qKey].count++;
             });
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
@@ -517,38 +534,16 @@
                         <tr class="bg-gray-50 border-b text-gray-500">
                             <th class="py-2.5 px-4 text-left border-r w-64">項目 / 資訊</th>`;
             
-            Object.values(quarters.forEach ? Object.values(quarters) : []).forEach(q => {}); // placeholder
-            // 簡化季別表頭
-            let currentQ = '';
-            let qCount = 0;
-            // 這裡直接動態產生季別
-            const qBlocks = [];
-            let lastKey = '';
-            months.forEach(m => {
-                const k = `${m.year} ${m.q.replace('Q','0')}`;
-                if (k !== lastKey) {
-                    if (lastKey) qBlocks.push({ name: lastKey, count: qCount });
-                    lastKey = k;
-                    qCount = 1;
-                } else {
-                    qCount++;
-                }
-            });
-            if (lastKey) qBlocks.push({ name: lastKey, count: qCount });
-
-            tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">01 (2026)</th>`;
-            if (maxYear >= 2027) {
-                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">02 (2027)</th>`;
-            }
-            if (maxYear >= 2028) {
-                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">03 (2028)</th>`;
+            for (let y = minYear; y <= maxYear; y++) {
+                tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">${y}</th>`;
             }
 
             tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
                             <th class="py-2 px-4 text-left border-r"></th>`;
             
+            // 需求 1：月份下面不用出現年份，只顯示英文月份名稱 (Jan, Feb...)
             months.forEach(m => {
-                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name} (${m.year})</th>`;
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name}</th>`;
             });
             tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
 
@@ -566,22 +561,22 @@
                 let activeItem = null;
 
                 group.items.forEach(row => {
-                    const type = String(row[3] || '');
+                    const type = colType !== -1 ? String(row[colType] || '') : String(row[3] || '');
                     if (type.includes('計畫')) planItem = row;
                     else if (type.includes('進行中')) activeItem = row;
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
                     if (!item) return '';
-                    const startVal = item[4] || '';
-                    const endVal = item[5] || '';
+                    const startVal = colStart !== -1 ? item[colStart] : item[4];
+                    const endVal = colEnd !== -1 ? item[colEnd] : item[5];
                     const startPct = dateToPercent(startVal);
                     const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 10);
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
-                    let labelText = String(item[3] || '').trim();
-                    const typeStr = labelText;
+                    const typeStr = colType !== -1 ? String(item[colType] || '').trim() : String(item[3] || '').trim();
+                    let labelText = typeStr;
                     
                     if (typeStr.includes('落後')) {
                         barColor = 'bg-rose-500';
@@ -602,9 +597,12 @@
                     </div>`;
                 };
 
+                // 需求 2：在左側資訊區塊顯示機台數量
+                const qtyText = group.qty ? ` (數量: ${group.qty})` : '';
+
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
                     <td class="py-3 px-4 border-r align-middle w-64">
-                        <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
+                        <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
@@ -625,23 +623,32 @@
             container.innerHTML = tableHtml;
         }
 
-        // 英文版甘特圖渲染邏輯 (支援動態跨年)
+        // 英文版甘特圖渲染邏輯
         function renderGanttChartEN() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container-en');
             container.innerHTML = '';
 
-            const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows);
+            const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows, sheet.columns);
             const totalMs = timelineEnd - timelineStart;
+
+            const colDept = sheet.columns.findIndex(c => c.includes("部門") || c.toLowerCase().includes("dept"));
+            const colClass = sheet.columns.findIndex(c => c.includes("課") || c.toLowerCase().includes("class"));
+            const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
+            const colQty = sheet.columns.findIndex(c => c.includes("數量") || c.toLowerCase().includes("qty") || c.toLowerCase().includes("quantity"));
+            const colType = sheet.columns.findIndex(c => c.includes("類別") || c.toLowerCase().includes("type") || c.toLowerCase().includes("status"));
+            const colStart = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
+            const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
-                const dept = row[0] || '';
-                const clazz = row[1] || '';
-                const machine = row[2] || 'Unnamed Machine';
+                const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
+                const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
+                const machine = colMachine !== -1 ? (row[colMachine] || 'Unnamed Machine') : (row[2] || 'Unnamed Machine');
+                const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const key = `${dept}_${clazz}_${machine}`;
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, items: [] };
+                    machineMap[key] = { dept, clazz, machine, qty, items: [] };
                 }
                 machineMap[key].items.push(row);
             });
@@ -652,19 +659,15 @@
                         <tr class="bg-gray-50 border-b text-gray-500">
                             <th class="py-2.5 px-4 text-left border-r w-64">Item / Information</th>`;
             
-            tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">Q1-Q4 (2026)</th>`;
-            if (maxYear >= 2027) {
-                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">Q1-Q4 (2027)</th>`;
-            }
-            if (maxYear >= 2028) {
-                tableHtml += `<th class="py-1 px-1 text-center bg-gray-100/50" colspan="12">Q1-Q4 (2028)</th>`;
+            for (let y = minYear; y <= maxYear; y++) {
+                tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">${y}</th>`;
             }
 
             tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
                             <th class="py-2 px-4 text-left border-r"></th>`;
             
             months.forEach(m => {
-                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name} (${m.year})</th>`;
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name}</th>`;
             });
             tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
 
@@ -682,22 +685,22 @@
                 let activeItem = null;
 
                 group.items.forEach(row => {
-                    const type = String(row[3] || '');
+                    const type = colType !== -1 ? String(row[colType] || '') : String(row[3] || '');
                     if (type.includes('計畫') || type.toLowerCase().includes('plan')) planItem = row;
                     else if (type.includes('進行中') || type.toLowerCase().includes('progress')) activeItem = row;
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
                     if (!item) return '';
-                    const startVal = item[4] || '';
-                    const endVal = item[5] || '';
+                    const startVal = colStart !== -1 ? item[colStart] : item[4];
+                    const endVal = colEnd !== -1 ? item[colEnd] : item[5];
                     const startPct = dateToPercent(startVal);
                     const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 10);
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
-                    let labelText = String(item[3] || '').trim();
-                    const typeStr = labelText;
+                    const typeStr = colType !== -1 ? String(item[colType] || '').trim() : String(item[3] || '').trim();
+                    let labelText = typeStr;
                     
                     if (typeStr.includes('落後') || typeStr.toLowerCase().includes('delay')) {
                         barColor = 'bg-rose-500';
@@ -718,9 +721,11 @@
                     </div>`;
                 };
 
+                const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
+
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
                     <td class="py-3 px-4 border-r align-middle w-64">
-                        <div class="font-bold text-gray-800 text-sm">${group.machine}</div>
+                        <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
                     </td>`;
 
@@ -811,9 +816,9 @@
                         
                         const columns = json[hIdx].map(c => formatHeaderClean(c)).filter(c => c !== "");
                         const rows = json.slice(hIdx + 1).filter(row => row.some(c => c !== "")).map(row => {
-                            return columns.map((_, i) => {
+                            return columns.map((colName, i) => {
                                 let val = row[i] !== undefined ? row[i] : "";
-                                if (i === 4 || i === 5) {
+                                if (colName.includes("開始") || colName.includes("完成") || colName.toLowerCase().includes("start") || colName.toLowerCase().includes("end")) {
                                     val = formatDateClean(val);
                                 }
                                 return String(val);
