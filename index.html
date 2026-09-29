@@ -261,14 +261,19 @@
                     appData = data;
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
-                        // 確保包含「機台數量」欄位（相容舊資料）
-                        if (!sheet.columns.includes("機台數量") && !sheet.columns.includes("Machine Qty")) {
-                            sheet.columns.splice(3, 0, "機台數量");
-                            sheet.rows.forEach(row => row.splice(3, 0, "1"));
+                        
+                        // 自動補齊「擺放位置」與「備註」欄位（相容舊資料）
+                        if (!sheet.columns.includes("擺放位置") && !sheet.columns.includes("Location")) {
+                            sheet.columns.splice(4, 0, "擺放位置");
+                            sheet.rows.forEach(row => row.splice(4, 0, ""));
                         }
+                        if (!sheet.columns.includes("備註") && !sheet.columns.includes("Remarks")) {
+                            sheet.columns.push("備註");
+                            sheet.rows.forEach(row => row.push(""));
+                        }
+
                         sheet.columns = sheet.columns.map(col => formatHeaderClean(col));
                         sheet.rows.forEach(row => {
-                            // 修正欄位索引：若包含機台數量，日期通常在索引 5, 6
                             const dateIdx1 = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
                             const dateIdx2 = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
                             if (dateIdx1 !== -1) row[dateIdx1] = formatDateClean(row[dateIdx1]);
@@ -281,10 +286,10 @@
                     appData = {
                         sheets: [{
                             name: "機台擴張排程",
-                            columns: ["部門", "課別", "機台", "機台數量", "類別", "開始日期", "完成日期"],
+                            columns: ["部門", "課別", "機台", "機台數量", "擺放位置", "類別", "開始日期", "完成日期", "備註"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "計畫", "2026-01-05", "2027-04-15"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "進行中", "2026-03-01", "2027-09-15"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "計畫", "2026-01-05", "2027-04-15", "首批試作機"],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "進行中", "2026-03-01", "2027-09-15", "量產擴充"]
                             ],
                             notes: {}
                         }]
@@ -336,8 +341,8 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["部門", "課別", "機台", "機台數量", "類別", "開始日期", "完成日期"],
-                rows: [["部門A", "課別A", "機台A", "1", "計畫", "2026-01-01", "2027-03-31"]],
+                columns: ["部門", "課別", "機台", "機台數量", "擺放位置", "類別", "開始日期", "完成日期", "備註"],
+                rows: [["部門A", "課別A", "機台A", "1", "位置A", "計畫", "2026-01-01", "2027-03-31", ""]],
                 notes: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
@@ -457,12 +462,10 @@
             renderApp();
         }
 
-        // 動態計算甘特圖時間範圍
         function getDynamicTimelineRange(sheetRows, columns) {
             let minYear = 2026;
             let maxYear = 2027;
 
-            // 尋找日期欄位索引
             const dateIndices = [];
             columns.forEach((c, idx) => {
                 if (c.includes("開始") || c.includes("完成") || c.toLowerCase().includes("start") || c.toLowerCase().includes("end") || c.toLowerCase().includes("date")) {
@@ -506,14 +509,15 @@
             const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows, sheet.columns);
             const totalMs = timelineEnd - timelineStart;
 
-            // 尋找欄位對應
             const colDept = sheet.columns.findIndex(c => c.includes("部門") || c.toLowerCase().includes("dept"));
             const colClass = sheet.columns.findIndex(c => c.includes("課") || c.toLowerCase().includes("class"));
             const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
             const colQty = sheet.columns.findIndex(c => c.includes("數量") || c.toLowerCase().includes("qty") || c.toLowerCase().includes("quantity"));
+            const colLocation = sheet.columns.findIndex(c => c.includes("位置") || c.toLowerCase().includes("location"));
             const colType = sheet.columns.findIndex(c => c.includes("類別") || c.toLowerCase().includes("type") || c.toLowerCase().includes("status"));
             const colStart = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
+            const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -521,9 +525,12 @@
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
                 const machine = colMachine !== -1 ? (row[colMachine] || '未命名機台') : (row[2] || '未命名機台');
                 const qty = colQty !== -1 ? (row[colQty] || '') : '';
-                const key = `${dept}_${clazz}_${machine}`;
+                const location = colLocation !== -1 ? (row[colLocation] || '') : '';
+                const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
+                
+                const key = `${dept}_${clazz}_${machine}_${location}`;
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, items: [] };
+                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
                 machineMap[key].items.push(row);
             });
@@ -532,7 +539,7 @@
                 <table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-64">項目 / 資訊</th>`;
+                            <th class="py-2.5 px-4 text-left border-r w-72">項目 / 資訊</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
                 tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">${y}</th>`;
@@ -541,7 +548,6 @@
             tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
                             <th class="py-2 px-4 text-left border-r"></th>`;
             
-            // 需求 1：月份下面不用出現年份，只顯示英文月份名稱 (Jan, Feb...)
             months.forEach(m => {
                 tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name}</th>`;
             });
@@ -597,13 +603,15 @@
                     </div>`;
                 };
 
-                // 需求 2：在左側資訊區塊顯示機台數量
                 const qtyText = group.qty ? ` (數量: ${group.qty})` : '';
+                const locText = group.location ? ` | 位置: ${group.location}` : '';
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">備註: ${group.remark}</div>` : '';
 
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
-                    <td class="py-3 px-4 border-r align-middle w-64">
+                    <td class="py-3 px-4 border-r align-middle w-72">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
-                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
+                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
+                        ${remarkText}
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -623,7 +631,6 @@
             container.innerHTML = tableHtml;
         }
 
-        // 英文版甘特圖渲染邏輯
         function renderGanttChartEN() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container-en');
@@ -636,9 +643,11 @@
             const colClass = sheet.columns.findIndex(c => c.includes("課") || c.toLowerCase().includes("class"));
             const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
             const colQty = sheet.columns.findIndex(c => c.includes("數量") || c.toLowerCase().includes("qty") || c.toLowerCase().includes("quantity"));
+            const colLocation = sheet.columns.findIndex(c => c.includes("位置") || c.toLowerCase().includes("location"));
             const colType = sheet.columns.findIndex(c => c.includes("類別") || c.toLowerCase().includes("type") || c.toLowerCase().includes("status"));
             const colStart = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
+            const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -646,9 +655,12 @@
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
                 const machine = colMachine !== -1 ? (row[colMachine] || 'Unnamed Machine') : (row[2] || 'Unnamed Machine');
                 const qty = colQty !== -1 ? (row[colQty] || '') : '';
-                const key = `${dept}_${clazz}_${machine}`;
+                const location = colLocation !== -1 ? (row[colLocation] || '') : '';
+                const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
+
+                const key = `${dept}_${clazz}_${machine}_${location}`;
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, items: [] };
+                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
                 machineMap[key].items.push(row);
             });
@@ -657,7 +669,7 @@
                 <table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
                     <thead>
                         <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-64">Item / Information</th>`;
+                            <th class="py-2.5 px-4 text-left border-r w-72">Item / Information</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
                 tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">${y}</th>`;
@@ -722,11 +734,14 @@
                 };
 
                 const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
+                const locText = group.location ? ` | Loc: ${group.location}` : '';
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">Remark: ${group.remark}</div>` : '';
 
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition">
-                    <td class="py-3 px-4 border-r align-middle w-64">
+                    <td class="py-3 px-4 border-r align-middle w-72">
                         <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
-                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}</div>
+                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
+                        ${remarkText}
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
