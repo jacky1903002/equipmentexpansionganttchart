@@ -262,7 +262,6 @@
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
                         
-                        // 自動補齊必要欄位（相容舊資料）
                         if (!sheet.columns.includes("擺放位置") && !sheet.columns.includes("Location")) {
                             sheet.columns.splice(4, 0, "擺放位置");
                             sheet.rows.forEach(row => row.splice(4, 0, ""));
@@ -523,8 +522,8 @@
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
-            let rowIndexCounter = 0;
-            const updatedMachineMap = {};
+            // 修正：透過「機台名稱」進行群組合併，讓同機台的計畫與進度條合併顯示在同一列
+            const machineMap = {};
             sheet.rows.forEach(row => {
                 const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
@@ -532,12 +531,17 @@
                 const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
                 const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
-                
-                const key = `row_${rowIndexCounter++}_${machine}`;
-                if (!updatedMachineMap[key]) {
-                    updatedMachineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
+
+                const key = machine.trim();
+                if (!machineMap[key]) {
+                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
-                updatedMachineMap[key].items.push(row);
+                // 若後續列有更新的部門/位置/備註，可進行覆蓋或保留
+                if (qty) machineMap[key].qty = qty;
+                if (location) machineMap[key].location = location;
+                if (remark) machineMap[key].remark = remark;
+
+                machineMap[key].items.push(row);
             });
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
@@ -567,14 +571,17 @@
                 return Math.max(0, Math.min(100, pct));
             }
 
-            Object.values(updatedMachineMap).forEach(group => {
+            Object.values(machineMap).forEach(group => {
                 let planItem = null;
                 let activeItem = null;
 
                 group.items.forEach(row => {
                     const type = colType !== -1 ? String(row[colType] || '') : String(row[3] || '');
-                    if (type.includes('計畫')) planItem = row;
-                    else if (type.includes('進行中') || type.includes('完成')) activeItem = row;
+                    if (type.includes('計畫')) {
+                        planItem = row;
+                    } else if (type.includes('進行中') || type.includes('完成') || type.includes('落後')) {
+                        activeItem = row; // 優先抓取執行中/已完成/落後作為第二條 BAR
+                    }
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
@@ -654,8 +661,7 @@
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
-            let rowIndexCounter = 0;
-            const updatedMachineMap = {};
+            const machineMap = {};
             sheet.rows.forEach(row => {
                 const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
@@ -664,11 +670,15 @@
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
                 const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
 
-                const key = `row_${rowIndexCounter++}_${machine}`;
-                if (!updatedMachineMap[key]) {
-                    updatedMachineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
+                const key = machine.trim();
+                if (!machineMap[key]) {
+                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
-                updatedMachineMap[key].items.push(row);
+                if (qty) machineMap[key].qty = qty;
+                if (location) machineMap[key].location = location;
+                if (remark) machineMap[key].remark = remark;
+
+                machineMap[key].items.push(row);
             });
 
             let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
@@ -698,14 +708,17 @@
                 return Math.max(0, Math.min(100, pct));
             }
 
-            Object.values(updatedMachineMap).forEach(group => {
+            Object.values(machineMap).forEach(group => {
                 let planItem = null;
                 let activeItem = null;
 
                 group.items.forEach(row => {
                     const type = colType !== -1 ? String(row[colType] || '') : String(row[3] || '');
-                    if (type.includes('計畫') || type.toLowerCase().includes('plan')) planItem = row;
-                    else if (type.includes('進行中') || type.includes('完成') || type.toLowerCase().includes('progress') || type.toLowerCase().includes('complete')) activeItem = row;
+                    if (type.includes('計畫') || type.toLowerCase().includes('plan')) {
+                        planItem = row;
+                    } else if (type.includes('進行中') || type.includes('完成') || type.includes('落後') || type.toLowerCase().includes('progress') || type.toLowerCase().includes('complete') || type.toLowerCase().includes('delay')) {
+                        activeItem = row;
+                    }
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
