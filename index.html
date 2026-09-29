@@ -513,7 +513,6 @@
             const { minYear, maxYear, months, timelineStart, timelineEnd } = getDynamicTimelineRange(sheet.rows, sheet.columns);
             const totalMs = timelineEnd - timelineStart;
 
-            // 動態尋找各欄位索引（具備強大容錯機制，即使欄位順序變動或未填也能正確抓取）
             const colDept = sheet.columns.findIndex(c => c.includes("部門") || c.toLowerCase().includes("dept"));
             const colClass = sheet.columns.findIndex(c => c.includes("課") || c.toLowerCase().includes("class"));
             const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
@@ -524,24 +523,6 @@
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
-            const machineMap = {};
-            sheet.rows.forEach(row => {
-                const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
-                const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
-                const machine = colMachine !== -1 ? (row[colMachine] || '未命名機台') : (row[2] || '未命名機台');
-                const qty = colQty !== -1 ? (row[colQty] || '') : '';
-                const location = colLocation !== -1 ? (row[colLocation] || '') : '';
-                const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
-                
-                // 修正：以資料列本身的識別值作為群組依據（即使擺放位置空白或隨後變動也不會造成甘特圖錯亂）
-                const key = `${rIdx}_${machine}_${location}`;
-                if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
-                }
-                machineMap[key].items.push(row);
-            });
-
-            // 重新修正迴圈中的 row 索引對應
             let rowIndexCounter = 0;
             const updatedMachineMap = {};
             sheet.rows.forEach(row => {
@@ -593,7 +574,7 @@
                 group.items.forEach(row => {
                     const type = colType !== -1 ? String(row[colType] || '') : String(row[3] || '');
                     if (type.includes('計畫')) planItem = row;
-                    else if (type.includes('進行中')) activeItem = row;
+                    else if (type.includes('進行中') || type.includes('完成')) activeItem = row;
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
@@ -724,7 +705,7 @@
                 group.items.forEach(row => {
                     const type = colType !== -1 ? String(row[colType] || '') : String(row[3] || '');
                     if (type.includes('計畫') || type.toLowerCase().includes('plan')) planItem = row;
-                    else if (type.includes('進行中') || type.toLowerCase().includes('progress')) activeItem = row;
+                    else if (type.includes('進行中') || type.includes('完成') || type.toLowerCase().includes('progress') || type.toLowerCase().includes('complete')) activeItem = row;
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
