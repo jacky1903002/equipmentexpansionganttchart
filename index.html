@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>機台擴張甘特圖管理系統 - 跨年動態版</title>
+    <title>機台擴張甘特圖管理系統</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS -->
@@ -50,7 +50,11 @@
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">跨年動態版</span>
             </h1>
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-4 flex-wrap">
+                <!-- 動態上次更新日期時間顯示 -->
+                <div class="update-banner text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full border flex items-center gap-1">
+                    <i class="fa-regular fa-clock"></i> 上次更新：<span id="last-update-time-text" class="font-semibold text-gray-800">讀取中...</span>
+                </div>
                 <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 連線中...</span>
                 <span id="auth-status-badge" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-semibold">🔒 訪客模式 (唯讀)</span>
                 <button id="logout-btn" onclick="handleLogout()" class="hidden text-xs bg-rose-100 text-rose-700 px-3 py-1 rounded-full font-semibold hover:bg-rose-200 transition">登出</button>
@@ -145,9 +149,29 @@
         const auth = firebase.auth();
         const rtdb = firebase.database();
 
-        let appData = { sheets: [] };
+        let appData = { sheets: [], updatedAt: null };
         let currentSheetIndex = 0;
         let isLoggedIn = false;
+
+        // 【新增】時間格式化與更新函數
+        window.formatDateTime = function(isoString) {
+          if (!isoString) return '尚無更新紀錄';
+          const d = new Date(isoString);
+          if (isNaN(d.getTime())) return isoString;
+          const yr = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const hr = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          return `${yr}年${m}月${day}日 ${hr}:${min}`;
+        };
+
+        window.updateTimeDisplay = function() {
+          const timeEl = document.getElementById('last-update-time-text');
+          if (timeEl) {
+            timeEl.innerText = window.updatedAt ? window.formatDateTime(window.updatedAt) : '尚未記錄';
+          }
+        };
 
         window.addEventListener('DOMContentLoaded', () => {
             auth.onAuthStateChanged((user) => {
@@ -259,6 +283,7 @@
                 const data = snapshot.val();
                 if (data && data.sheets) {
                     appData = data;
+                    window.updatedAt = data.updatedAt || null;
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
                         
@@ -295,24 +320,33 @@
                                 ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "進行中", "2026-03-01", "2027-09-15", "量產擴充"]
                             ],
                             notes: {}
-                        }]
+                        }],
+                        updatedAt: new Date().toISOString()
                     };
+                    window.updatedAt = appData.updatedAt;
                     saveToCloud();
                 }
+                window.updateTimeDisplay();
                 renderApp();
             });
         }
 
         function saveToCloud() {
             if (!isLoggedIn) return;
+            appData.updatedAt = new Date().toISOString();
+            window.updatedAt = appData.updatedAt;
+            window.updateTimeDisplay();
             rtdb.ref('ganttSystem/mainData').set(appData);
         }
 
         function renderApp() {
-            renderSheetsTabs();
-            renderTable();
-            renderGanttChart();
-            renderGanttChartEN();
+            // 使用 requestAnimationFrame 提升渲染流暢度與速度
+            window.requestAnimationFrame(() => {
+                renderSheetsTabs();
+                renderTable();
+                renderGanttChart();
+                renderGanttChartEN();
+            });
         }
 
         function renderSheetsTabs() {
@@ -522,7 +556,6 @@
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
 
-            // 修正：透過「機台名稱」進行群組合併，讓同機台的計畫與進度條合併顯示在同一列
             const machineMap = {};
             sheet.rows.forEach(row => {
                 const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
@@ -536,7 +569,6 @@
                 if (!machineMap[key]) {
                     machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
                 }
-                // 若後續列有更新的部門/位置/備註，可進行覆蓋或保留
                 if (qty) machineMap[key].qty = qty;
                 if (location) machineMap[key].location = location;
                 if (remark) machineMap[key].remark = remark;
@@ -580,7 +612,7 @@
                     if (type.includes('計畫')) {
                         planItem = row;
                     } else if (type.includes('進行中') || type.includes('完成') || type.includes('落後')) {
-                        activeItem = row; // 優先抓取執行中/已完成/落後作為第二條 BAR
+                        activeItem = row;
                     }
                 });
 
