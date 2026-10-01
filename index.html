@@ -53,7 +53,7 @@
             <div class="flex items-center space-x-4 flex-wrap">
                 <!-- 動態上次更新日期時間顯示 -->
                 <div class="update-banner text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full border flex items-center gap-1">
-                    <i class="fa-regular fa-clock"></i> 上次更新：<span id="last-update-time-text" class="font-semibold text-gray-800">讀取中...</span>
+                    <span>🕒</span> 上次更新：<span id="last-update-time-text" class="font-semibold text-gray-800">讀取中...</span>
                 </div>
                 <span id="sync-status" class="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium">⏳ 連線中...</span>
                 <span id="auth-status-badge" class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded-full font-semibold">🔒 訪客模式 (唯讀)</span>
@@ -152,8 +152,10 @@
         let appData = { sheets: [], updatedAt: null };
         let currentSheetIndex = 0;
         let isLoggedIn = false;
+        
+        // 記錄被隱藏的機台狀態 (key 為 machine 名稱)
+        window.hiddenMachines = {};
 
-        // 【新增】時間格式化與更新函數
         window.formatDateTime = function(isoString) {
           if (!isoString) return '尚無更新紀錄';
           const d = new Date(isoString);
@@ -286,6 +288,7 @@
                     window.updatedAt = data.updatedAt || null;
                     appData.sheets.forEach(sheet => {
                         if (!sheet.notes) sheet.notes = {};
+                        if (!sheet.images) sheet.images = {};
                         
                         if (!sheet.columns.includes("擺放位置") && !sheet.columns.includes("Location")) {
                             sheet.columns.splice(4, 0, "擺放位置");
@@ -297,6 +300,10 @@
                         }
                         if (!sheet.columns.includes("備註") && !sheet.columns.includes("Remarks")) {
                             sheet.columns.push("備註");
+                            sheet.rows.forEach(row => row.push(""));
+                        }
+                        if (!sheet.columns.includes("圖片連結") && !sheet.columns.includes("Image Link")) {
+                            sheet.columns.push("圖片連結");
                             sheet.rows.forEach(row => row.push(""));
                         }
 
@@ -314,12 +321,13 @@
                     appData = {
                         sheets: [{
                             name: "機台擴張排程",
-                            columns: ["部門", "課別", "機台", "機台數量", "擺放位置", "類別", "開始日期", "完成日期", "備註"],
+                            columns: ["部門", "課別", "機台", "機台數量", "擺放位置", "類別", "開始日期", "完成日期", "備註", "圖片連結"],
                             rows: [
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "計畫", "2026-01-05", "2027-04-15", "首批試作機"],
-                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "進行中", "2026-03-01", "2027-09-15", "量產擴充"]
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "計畫", "2026-01-05", "2027-04-15", "首批試作機", ""],
+                                ["製造一部", "金屬一課", "自動化銑床1:4", "2", "A區-01", "進行中", "2026-03-01", "2027-09-15", "量產擴充", ""]
                             ],
-                            notes: {}
+                            notes: {},
+                            images: {}
                         }],
                         updatedAt: new Date().toISOString()
                     };
@@ -340,7 +348,6 @@
         }
 
         function renderApp() {
-            // 使用 requestAnimationFrame 提升渲染流暢度與速度
             window.requestAnimationFrame(() => {
                 renderSheetsTabs();
                 renderTable();
@@ -378,9 +385,10 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["部門", "課別", "機台", "機台數量", "擺放位置", "類別", "開始日期", "完成日期", "備註"],
-                rows: [["部門A", "課別A", "機台A", "1", "位置A", "計畫", "2026-01-01", "2027-03-31", ""]],
-                notes: {}
+                columns: ["部門", "課別", "機台", "機台數量", "擺放位置", "類別", "開始日期", "完成日期", "備註", "圖片連結"],
+                rows: [["部門A", "課別A", "機台A", "1", "位置A", "計畫", "2026-01-01", "2027-03-31", "", ""]],
+                notes: {},
+                images: {}
             });
             currentSheetIndex = appData.sheets.length - 1;
             saveToCloud();
@@ -538,6 +546,13 @@
             return { minYear, maxYear, months, timelineStart, timelineEnd };
         }
 
+        // 切換隱藏機台狀態
+        function toggleHideMachine(machineKey) {
+            window.hiddenMachines[machineKey] = !window.hiddenMachines[machineKey];
+            renderGanttChart();
+            renderGanttChartEN();
+        }
+
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -555,6 +570,7 @@
             const colStart = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
+            const colImage = sheet.columns.findIndex(c => c.includes("圖片") || c.toLowerCase().includes("image") || c.toLowerCase().includes("link"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -564,14 +580,16 @@
                 const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
                 const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
+                const imageLink = colImage !== -1 ? (row[colImage] || '') : '';
 
                 const key = machine.trim();
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
+                    machineMap[key] = { dept, clazz, machine, qty, location, remark, imageLink, items: [] };
                 }
                 if (qty) machineMap[key].qty = qty;
                 if (location) machineMap[key].location = location;
                 if (remark) machineMap[key].remark = remark;
+                if (imageLink) machineMap[key].imageLink = imageLink;
 
                 machineMap[key].items.push(row);
             });
@@ -604,6 +622,8 @@
             }
 
             Object.values(machineMap).forEach(group => {
+                const isHidden = window.hiddenMachines[group.machine.trim()];
+                
                 let planItem = null;
                 let activeItem = null;
 
@@ -617,7 +637,7 @@
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
-                    if (!item) return '';
+                    if (!item || isHidden) return '';
                     const startVal = colStart !== -1 ? item[colStart] : item[4];
                     const endVal = colEnd !== -1 ? item[colEnd] : item[5];
                     const startPct = dateToPercent(startVal);
@@ -649,13 +669,22 @@
 
                 const qtyText = group.qty ? ` (數量: ${group.qty})` : '';
                 const locText = group.location ? ` | 位置: ${group.location}` : '';
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">備註: ${group.remark}</div>` : '';
+                
+                // 【新增功能呈現】備註欄位與圖片連結
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 備註: ${group.remark}</div>` : '';
+                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 檢視圖片連結</a></div>` : '';
 
-                tableHtml += `<tr class="hover:bg-gray-50/80 transition">
+                tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
                     <td class="py-3 px-4 border-r align-middle w-72">
-                        <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
+                            <button onclick="toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
+                                ${isHidden ? '顯示' : '隱藏'}
+                            </button>
+                        </div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
                         ${remarkText}
+                        ${imageLinkHtml}
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -664,8 +693,9 @@
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, 'bg-amber-400', 'top-2')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
+                    ${isHidden ? '<div class="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-medium bg-gray-100/50">已隱藏此項目</div>' : `
+                        ${renderBar(planItem, 'bg-amber-400', 'top-2')}${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
+                    `}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -692,6 +722,7 @@
             const colStart = sheet.columns.findIndex(c => c.includes("開始") || c.toLowerCase().includes("start"));
             const colEnd = sheet.columns.findIndex(c => c.includes("完成") || c.toLowerCase().includes("end") || c.toLowerCase().includes("complete"));
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
+            const colImage = sheet.columns.findIndex(c => c.includes("圖片") || c.toLowerCase().includes("image") || c.toLowerCase().includes("link"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
@@ -701,14 +732,16 @@
                 const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
                 const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
+                const imageLink = colImage !== -1 ? (row[colImage] || '') : '';
 
                 const key = machine.trim();
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, location, remark, items: [] };
+                    machineMap[key] = { dept, clazz, machine, qty, location, remark, imageLink, items: [] };
                 }
                 if (qty) machineMap[key].qty = qty;
                 if (location) machineMap[key].location = location;
                 if (remark) machineMap[key].remark = remark;
+                if (imageLink) machineMap[key].imageLink = imageLink;
 
                 machineMap[key].items.push(row);
             });
@@ -741,6 +774,8 @@
             }
 
             Object.values(machineMap).forEach(group => {
+                const isHidden = window.hiddenMachines[group.machine.trim()];
+                
                 let planItem = null;
                 let activeItem = null;
 
@@ -754,7 +789,7 @@
                 });
 
                 const renderBar = (item, defaultColor, topClass) => {
-                    if (!item) return '';
+                    if (!item || isHidden) return '';
                     const startVal = colStart !== -1 ? item[colStart] : item[4];
                     const endVal = colEnd !== -1 ? item[colEnd] : item[5];
                     const startPct = dateToPercent(startVal);
@@ -786,13 +821,21 @@
 
                 const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
                 const locText = group.location ? ` | Loc: ${group.location}` : '';
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">Remark: ${group.remark}</div>` : '';
+                
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 Remark: ${group.remark}</div>` : '';
+                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 View Image Link</a></div>` : '';
 
-                tableHtml += `<tr class="hover:bg-gray-50/80 transition">
+                tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
                     <td class="py-3 px-4 border-r align-middle w-72">
-                        <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
+                            <button onclick="toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
+                                ${isHidden ? 'Show' : 'Hide'}
+                            </button>
+                        </div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
                         ${remarkText}
+                        ${imageLinkHtml}
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -801,8 +844,9 @@
                     tableHtml += `<div class="border-r border-gray-100 h-full"></div>`;
                 }
                 tableHtml += `</div>
-                    ${renderBar(planItem, 'bg-amber-400', 'top-2')}
-                    ${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
+                    ${isHidden ? '<div class="absolute inset-0 flex items-center justify-center text-xs text-gray-400 font-medium bg-gray-100/50">Hidden Item</div>' : `
+                        ${renderBar(planItem, 'bg-amber-400', 'top-2')}${renderBar(activeItem, 'bg-emerald-500', 'top-10')}
+                    `}
                 </td>`;
 
                 tableHtml += `</tr>`;
@@ -891,7 +935,7 @@
                             });
                         });
                         
-                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {} });
+                        newSheets.push({ name: sheetName, columns, rows: rows.length > 0 ? rows : [new Array(columns.length).fill("")], notes: {}, images: {} });
                     }
                 });
                 if (newSheets.length > 0) {
