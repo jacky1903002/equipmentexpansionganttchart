@@ -48,7 +48,7 @@
     <div class="flex flex-col min-h-screen">
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span>☁️️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">產能極限</span>
+                <span>☁</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">產能極限</span>
             </h1>
             <div class="flex items-center space-x-4 flex-wrap">
                 <!-- 動態上次更新日期時間顯示 -->
@@ -562,7 +562,6 @@
             const sheet = appData.sheets[currentSheetIndex];
             const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
             
-            // 尋找對應的 row 並更新備註
             let targetRow = sheet.rows.find(row => {
                 const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
                 const mName = colMachine !== -1 ? (row[colMachine] || '') : (row[2] || '');
@@ -660,10 +659,10 @@
             });
 
             // 表格套用 sticky 凍結窗格效果
-            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
+            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 340}px]">
                     <thead>
                         <tr class="bg-gray-100 border-b text-gray-500 sticky top-0 z-30">
-                            <th class="py-2.5 px-4 text-left border-r w-72 bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">項目 / 資訊</th>`;
+                            <th class="py-2.5 px-4 text-left border-r w-[340px] bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">項目 / 資訊</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
                 tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100" colspan="12">${y}</th>`;
@@ -735,23 +734,32 @@
                 const qtyText = group.qty ? ` (數量: ${group.qty})` : '';
                 const locText = group.location ? ` | 位置: ${group.location}` : '';
                 
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 備註: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic">（點兩下新增備註）</div>';
-                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 檢視圖片連結</a></div>` : '<div class="text-[11px] text-gray-400 italic">（點兩下新增圖片）</div>';
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium mt-1">📝 備註: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic mt-1">（點兩下新增備註）</div>';
+                
+                // 左側圖片區塊 (置於左側)
+                const imageBoxHtml = group.imageLink 
+                    ? `<div class="w-24 h-16 flex-shrink-0 bg-white border rounded flex items-center justify-center overflow-hidden cursor-pointer shadow-sm hover:opacity-90" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="點兩下可更換圖片">
+                           <img src="${group.imageLink}" alt="機台圖片" class="w-full h-full object-contain">
+                       </div>`
+                    : `<div class="w-24 h-16 flex-shrink-0 bg-gray-50 border border-dashed rounded flex flex-col items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-100" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="點兩下新增圖片">
+                           <span>🖼️ 新增圖片</span>
+                       </div>`;
 
-                // 左側欄位加入雙擊事件 (點兩下加備註與圖片)
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
-                    <td class="py-3 px-4 border-r align-middle w-72 bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]" 
-                        ondblclick="handleDoubleClickRemark('${group.machine.trim()}')" 
-                        title="提示：點兩下可修改備註，點擊圖片區域可修改圖片連結">
-                        <div class="flex justify-between items-start">
-                            <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
-                            <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
-                                ${isHidden ? '顯示' : '隱藏'}
-                            </button>
+                    <td class="py-3 px-3 border-r align-middle w-[340px] bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]">
+                        <div class="flex items-center space-x-3">
+                            ${imageBoxHtml}
+                            <div class="flex-1 min-w-0" ondblclick="handleDoubleClickRemark('${group.machine.trim()}')" title="提示：點兩下文字區可修改備註">
+                                <div class="flex justify-between items-start">
+                                    <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600 truncate" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
+                                    <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-1 flex-shrink-0">
+                                        ${isHidden ? '顯示' : '隱藏'}
+                                    </button>
+                                </div>
+                                <div class="text-[11px] text-gray-500 truncate">${group.dept} / ${group.clazz}${locText}</div>
+                                <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
+                            </div>
                         </div>
-                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
-                        <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
-                        <div ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')">${imageLinkHtml}</div>
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -813,10 +821,10 @@
                 machineMap[key].items.push(row);
             });
 
-            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
+            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 340}px]">
                     <thead>
                         <tr class="bg-gray-100 border-b text-gray-500 sticky top-0 z-30">
-                            <th class="py-2.5 px-4 text-left border-r w-72 bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">Item / Information</th>`;
+                            <th class="py-2.5 px-4 text-left border-r w-[340px] bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">Item / Information</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
                 tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100" colspan="12">${y}</th>`;
@@ -888,20 +896,31 @@
                 const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
                 const locText = group.location ? ` | Loc: ${group.location}` : '';
                 
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 Remark: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic">(Double click to add remark)</div>';
-                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 View Image Link</a></div>` : '<div class="text-[11px] text-gray-400 italic">(Double click to add image)</div>';
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium mt-1">📝 Remark: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic mt-1">(Double click to add remark)</div>';
+                
+                const imageBoxHtml = group.imageLink 
+                    ? `<div class="w-24 h-16 flex-shrink-0 bg-white border rounded flex items-center justify-center overflow-hidden cursor-pointer shadow-sm hover:opacity-90" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="Double click to change image">
+                           <img src="${group.imageLink}" alt="Machine Image" class="w-full h-full object-contain">
+                       </div>`
+                    : `<div class="w-24 h-16 flex-shrink-0 bg-gray-50 border border-dashed rounded flex flex-col items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-100" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="Double click to add image">
+                           <span>🖼️ Add Image</span>
+                       </div>`;
 
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
-                    <td class="py-3 px-4 border-r align-middle w-72 bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]" ondblclick="handleDoubleClickRemark('${group.machine.trim()}')">
-                        <div class="flex justify-between items-start">
-                            <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
-                            <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
-                                ${isHidden ? 'Show' : 'Hide'}
-                            </button>
+                    <td class="py-3 px-3 border-r align-middle w-[340px] bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]">
+                        <div class="flex items-center space-x-3">
+                            ${imageBoxHtml}
+                            <div class="flex-1 min-w-0" ondblclick="handleDoubleClickRemark('${group.machine.trim()}')">
+                                <div class="flex justify-between items-start">
+                                    <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600 truncate" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
+                                    <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-1 flex-shrink-0">
+                                        ${isHidden ? 'Show' : 'Hide'}
+                                    </button>
+                                </div>
+                                <div class="text-[11px] text-gray-500 truncate">${group.dept} / ${group.clazz}${locText}</div>
+                                <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
+                            </div>
                         </div>
-                        <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
-                        <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
-                        <div ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')">${imageLinkHtml}</div>
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
