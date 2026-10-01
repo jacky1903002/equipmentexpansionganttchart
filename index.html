@@ -48,7 +48,7 @@
     <div class="flex flex-col min-h-screen">
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center border-b">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <span>☁️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">產能極限</span>
+                <span>☁️️</span> 機台擴張甘特圖管理系統 <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal">產能極限</span>
             </h1>
             <div class="flex items-center space-x-4 flex-wrap">
                 <!-- 動態上次更新日期時間顯示 -->
@@ -110,7 +110,8 @@
                         <button id="export-btn" onclick="exportGanttPNG()" class="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-blue-700 transition shadow-sm font-medium">匯出甘特圖 PNG</button>
                     </div>
                 </div>
-                <div id="gantt-container" class="overflow-x-auto py-2"></div>
+                <!-- 調整容器支援凍結窗格高度與滾動 -->
+                <div id="gantt-container" class="overflow-x-auto overflow-y-auto max-h-[600px] border rounded-xl bg-white shadow-sm relative"></div>
             </div>
 
             <!-- 甘特圖預覽區 (英文版) -->
@@ -127,7 +128,8 @@
                         <button id="export-btn-en" onclick="exportGanttPNG_EN()" class="bg-indigo-600 text-white px-3.5 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition shadow-sm font-medium">Export English PNG</button>
                     </div>
                 </div>
-                <div id="gantt-container-en" class="overflow-x-auto py-2"></div>
+                <!-- 調整容器支援凍結窗格高度與滾動 -->
+                <div id="gantt-container-en" class="overflow-x-auto overflow-y-auto max-h-[600px] border rounded-xl bg-white shadow-sm relative"></div>
             </div>
         </main>
     </div>
@@ -153,7 +155,6 @@
         let currentSheetIndex = 0;
         let isLoggedIn = false;
         
-        // 記錄被隱藏的機台狀態 (key 為 machine 名稱)
         window.hiddenMachines = {};
 
         window.formatDateTime = function(isoString) {
@@ -546,11 +547,75 @@
             return { minYear, maxYear, months, timelineStart, timelineEnd };
         }
 
-        // 切換隱藏機台狀態
         function toggleHideMachine(machineKey) {
             window.hiddenMachines[machineKey] = !window.hiddenMachines[machineKey];
             renderGanttChart();
             renderGanttChartEN();
+        }
+
+        // 點兩下直接修改備註
+        function handleDoubleClickRemark(machineKey) {
+            if (!isLoggedIn) {
+                alert("訪客模式無法修改備註，請先登入管理者帳號。");
+                return;
+            }
+            const sheet = appData.sheets[currentSheetIndex];
+            const colRemark = sheet.columns.findIndex(c => c.includes("備註") || c.toLowerCase().includes("remark") || c.toLowerCase().includes("note"));
+            
+            // 尋找對應的 row 並更新備註
+            let targetRow = sheet.rows.find(row => {
+                const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
+                const mName = colMachine !== -1 ? (row[colMachine] || '') : (row[2] || '');
+                return mName.trim() === machineKey;
+            });
+
+            if (targetRow) {
+                const currentRemark = colRemark !== -1 ? targetRow[colRemark] : '';
+                const newRemark = prompt(`請輸入「${machineKey}」的新備註：`, currentRemark);
+                if (newRemark !== null) {
+                    if (colRemark !== -1) {
+                        targetRow[colRemark] = newRemark;
+                    } else {
+                        sheet.columns.push("備註");
+                        sheet.rows.forEach(r => r.push(""));
+                        sheet.rows[sheet.rows.length - 1][sheet.columns.length - 1] = newRemark;
+                    }
+                    saveToCloud();
+                    renderApp();
+                }
+            }
+        }
+
+        // 點兩下直接增加/修改圖片
+        function handleDoubleClickImage(machineKey) {
+            if (!isLoggedIn) {
+                alert("訪客模式無法修改圖片連結，請先登入管理者帳號。");
+                return;
+            }
+            const sheet = appData.sheets[currentSheetIndex];
+            const colImage = sheet.columns.findIndex(c => c.includes("圖片") || c.toLowerCase().includes("image") || c.toLowerCase().includes("link"));
+            
+            let targetRow = sheet.rows.find(row => {
+                const colMachine = sheet.columns.findIndex(c => c.includes("機台") || c.toLowerCase().includes("machine") || c.toLowerCase().includes("item"));
+                const mName = colMachine !== -1 ? (row[colMachine] || '') : (row[2] || '');
+                return mName.trim() === machineKey;
+            });
+
+            if (targetRow) {
+                const currentImage = colImage !== -1 ? targetRow[colImage] : '';
+                const newImage = prompt(`請輸入「${machineKey}」的圖片網址/連結：`, currentImage);
+                if (newImage !== null) {
+                    if (colImage !== -1) {
+                        targetRow[colImage] = newImage;
+                    } else {
+                        sheet.columns.push("圖片連結");
+                        sheet.rows.forEach(r => r.push(""));
+                        sheet.rows[sheet.rows.length - 1][sheet.columns.length - 1] = newImage;
+                    }
+                    saveToCloud();
+                    renderApp();
+                }
+            }
         }
 
         function renderGanttChart() {
@@ -594,21 +659,21 @@
                 machineMap[key].items.push(row);
             });
 
-            let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
-                <table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
+            // 表格套用 sticky 凍結窗格效果
+            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
                     <thead>
-                        <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-72">項目 / 資訊</th>`;
+                        <tr class="bg-gray-100 border-b text-gray-500 sticky top-0 z-30">
+                            <th class="py-2.5 px-4 text-left border-r w-72 bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">項目 / 資訊</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
-                tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">${y}</th>`;
+                tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100" colspan="12">${y}</th>`;
             }
 
-            tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
-                            <th class="py-2 px-4 text-left border-r"></th>`;
+            tableHtml += `</tr><tr class="bg-gray-100 border-b text-gray-600 font-medium sticky top-[37px] z-30">
+                            <th class="py-2 px-4 text-left border-r bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]"></th>`;
             
             months.forEach(m => {
-                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name}</th>`;
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px] bg-gray-100">${m.name}</th>`;
             });
             tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
 
@@ -670,21 +735,23 @@
                 const qtyText = group.qty ? ` (數量: ${group.qty})` : '';
                 const locText = group.location ? ` | 位置: ${group.location}` : '';
                 
-                // 【新增功能呈現】備註欄位與圖片連結
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 備註: ${group.remark}</div>` : '';
-                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 檢視圖片連結</a></div>` : '';
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 備註: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic">（點兩下新增備註）</div>';
+                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 檢視圖片連結</a></div>` : '<div class="text-[11px] text-gray-400 italic">（點兩下新增圖片）</div>';
 
+                // 左側欄位加入雙擊事件 (點兩下加備註與圖片)
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
-                    <td class="py-3 px-4 border-r align-middle w-72">
+                    <td class="py-3 px-4 border-r align-middle w-72 bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]" 
+                        ondblclick="handleDoubleClickRemark('${group.machine.trim()}')" 
+                        title="提示：點兩下可修改備註，點擊圖片區域可修改圖片連結">
                         <div class="flex justify-between items-start">
-                            <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
-                            <button onclick="toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
+                            <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
+                            <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
                                 ${isHidden ? '顯示' : '隱藏'}
                             </button>
                         </div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
-                        ${remarkText}
-                        ${imageLinkHtml}
+                        <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
+                        <div ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')">${imageLinkHtml}</div>
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -701,7 +768,7 @@
                 tableHtml += `</tr>`;
             });
 
-            tableHtml += `</tbody></table></div>`;
+            tableHtml += `</tbody></table>`;
             container.innerHTML = tableHtml;
         }
 
@@ -746,21 +813,20 @@
                 machineMap[key].items.push(row);
             });
 
-            let tableHtml = `<div class="overflow-x-auto border rounded-xl bg-white shadow-sm">
-                <table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
+            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 250}px]">
                     <thead>
-                        <tr class="bg-gray-50 border-b text-gray-500">
-                            <th class="py-2.5 px-4 text-left border-r w-72">Item / Information</th>`;
+                        <tr class="bg-gray-100 border-b text-gray-500 sticky top-0 z-30">
+                            <th class="py-2.5 px-4 text-left border-r w-72 bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">Item / Information</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
-                tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100/50" colspan="12">${y}</th>`;
+                tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100" colspan="12">${y}</th>`;
             }
 
-            tableHtml += `</tr><tr class="bg-gray-50 border-b text-gray-600 font-medium">
-                            <th class="py-2 px-4 text-left border-r"></th>`;
+            tableHtml += `</tr><tr class="bg-gray-100 border-b text-gray-600 font-medium sticky top-[37px] z-30">
+                            <th class="py-2 px-4 text-left border-r bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]"></th>`;
             
             months.forEach(m => {
-                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px]">${m.name}</th>`;
+                tableHtml += `<th class="py-1.5 px-1 text-center border-r w-12 font-normal text-[11px] bg-gray-100">${m.name}</th>`;
             });
             tableHtml += `</tr></thead><tbody class="divide-y divide-gray-100">`;
 
@@ -809,7 +875,7 @@
                     } else if (typeStr.includes('進行中') || typeStr.toLowerCase().includes('progress')) {
                         barColor = 'bg-emerald-500';
                         labelText = 'In Progress';
-                    } else if (typeStr.includes('計畫') || typeStr.toLowerCase().includes('plan')) {
+                    } else if (typeStr.includes('計畫') || type.toLowerCase().includes('plan')) {
                         barColor = 'bg-amber-400';
                         labelText = 'Plan';
                     }
@@ -822,20 +888,20 @@
                 const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
                 const locText = group.location ? ` | Loc: ${group.location}` : '';
                 
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 Remark: ${group.remark}</div>` : '';
-                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 View Image Link</a></div>` : '';
+                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium">📝 Remark: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic">(Double click to add remark)</div>';
+                const imageLinkHtml = group.imageLink ? `<div class="text-[11px] mt-0.5"><a href="${group.imageLink}" target="_blank" class="text-indigo-600 hover:underline font-medium">🔗 View Image Link</a></div>` : '<div class="text-[11px] text-gray-400 italic">(Double click to add image)</div>';
 
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
-                    <td class="py-3 px-4 border-r align-middle w-72">
+                    <td class="py-3 px-4 border-r align-middle w-72 bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]" ondblclick="handleDoubleClickRemark('${group.machine.trim()}')">
                         <div class="flex justify-between items-start">
-                            <div class="font-bold text-gray-800 text-sm">${group.machine}${qtyText}</div>
-                            <button onclick="toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
+                            <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
+                            <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-2">
                                 ${isHidden ? 'Show' : 'Hide'}
                             </button>
                         </div>
                         <div class="text-[11px] text-gray-500">${group.dept} / ${group.clazz}${locText}</div>
-                        ${remarkText}
-                        ${imageLinkHtml}
+                        <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
+                        <div ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')">${imageLinkHtml}</div>
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -852,7 +918,7 @@
                 tableHtml += `</tr>`;
             });
 
-            tableHtml += `</tbody></table></div>`;
+            tableHtml += `</tbody></table>`;
             container.innerHTML = tableHtml;
         }
 
