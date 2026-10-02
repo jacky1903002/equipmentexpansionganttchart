@@ -96,13 +96,13 @@
                 </div>
             </div>
 
-            <!-- 新增：擴張情況分析區塊 -->
+            <!-- 擴張情況分析區塊 (數量自動除以2) -->
             <div class="bg-white rounded-xl shadow-sm border p-6 space-y-4">
                 <div class="flex justify-between items-center flex-wrap gap-3">
                     <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
                         <span>📊</span> 擴張情況分析 (Expansion Analysis)
                     </h3>
-                    <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">即時產能與狀態統計</span>
+                    <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">即時產能與狀態統計 (同項目計入折半)</span>
                 </div>
                 <div id="expansion-analysis-content" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <!-- 動態產出分析卡片 -->
@@ -302,37 +302,35 @@
                         if (!sheet.notes) sheet.notes = {};
                         if (!sheet.images) sheet.images = {};
                         
-                        // 確保欄位皆為英文預設
+                        // 清理欄位，排除已被要求的無效欄位
                         sheet.columns = sheet.columns.map(col => {
                             if (col === "部門") return "Dept.";
                             if (col === "課別") return "Section";
                             if (col === "機台") return "Machine";
-                            if (col === "機台數量") return "Machine Qty";
                             if (col === "擺放位置") return "Location";
                             if (col === "類別") return "Status";
                             if (col === "開始日期") return "Start Date";
                             if (col === "完成日期") return "End Date";
-                            if (col === "備註") return "Remarks";
-                            if (col === "圖片連結") return "Image Link";
                             return formatHeaderClean(col);
+                        }).filter(col => {
+                            const cLower = col.toLowerCase();
+                            return !cLower.includes("machine qty") && 
+                                   !cLower.includes("note") && 
+                                   !cLower.includes("pic") && 
+                                   !cLower.includes("remarks") &&
+                                   !cLower.includes("數量") &&
+                                   !cLower.includes("備註") &&
+                                   !cLower.includes("圖片");
                         });
 
-                        if (!sheet.columns.includes("Location")) {
-                            sheet.columns.splice(4, 0, "Location");
-                            sheet.rows.forEach(row => row.splice(4, 0, ""));
-                        }
-                        if (!sheet.columns.includes("Machine Qty")) {
-                            sheet.columns.splice(3, 0, "Machine Qty");
-                            sheet.rows.forEach(row => row.splice(3, 0, "1"));
-                        }
-                        if (!sheet.columns.includes("Remarks")) {
-                            sheet.columns.push("Remarks");
-                            sheet.rows.forEach(row => row.push(""));
-                        }
-                        if (!sheet.columns.includes("Image Link")) {
-                            sheet.columns.push("Image Link");
-                            sheet.rows.forEach(row => row.push(""));
-                        }
+                        // 確保至少包含基本必要英文欄位
+                        const requiredCols = ["Dept.", "Section", "Machine", "Location", "Status", "Start Date", "End Date"];
+                        requiredCols.forEach((reqCol, idx) => {
+                            if (!sheet.columns.includes(reqCol)) {
+                                sheet.columns.splice(idx, 0, reqCol);
+                                sheet.rows.forEach(row => row.splice(idx, 0, ""));
+                            }
+                        });
 
                         sheet.rows.forEach(row => {
                             const dateIdx1 = sheet.columns.findIndex(c => c.includes("Start") || c.includes("開始"));
@@ -347,10 +345,10 @@
                     appData = {
                         sheets: [{
                             name: "Machine Expansion Schedule",
-                            columns: ["Dept.", "Section", "Machine", "Machine Qty", "Location", "Status", "Start Date", "End Date", "Remarks", "Image Link"],
+                            columns: ["Dept.", "Section", "Machine", "Location", "Status", "Start Date", "End Date"],
                             rows: [
-                                ["Dept.1", "Section 1", "Auto Milling 1:4", "2", "Area A-01", "Plan", "2026-01-05", "2027-04-15", "Trial machine", ""],
-                                ["Dept.1", "Section 1", "Auto Milling 1:4", "2", "Area A-01", "In Progress", "2026-03-01", "2027-09-15", "Mass production expansion", ""]
+                                ["Dept.1", "Section 1", "Auto Milling 1:4", "Area A-01", "Plan", "2026-01-05", "2027-04-15"],
+                                ["Dept.1", "Section 1", "Auto Milling 1:4", "Area A-01", "In Progress", "2026-03-01", "2027-09-15"]
                             ],
                             notes: {},
                             images: {}
@@ -412,8 +410,8 @@
             if (!name) return;
             appData.sheets.push({
                 name: name.trim(),
-                columns: ["Dept.", "Section", "Machine", "Machine Qty", "Location", "Status", "Start Date", "End Date", "Remarks", "Image Link"],
-                rows: [["Dept. A", "Section A", "Machine A", "1", "Location A", "Plan", "2026-01-01", "2027-03-31", "", ""]],
+                columns: ["Dept.", "Section", "Machine", "Location", "Status", "Start Date", "End Date"],
+                rows: [["Dept. A", "Section A", "Machine A", "Location A", "Plan", "2026-01-01", "2027-03-31"]],
                 notes: {},
                 images: {}
             });
@@ -535,49 +533,52 @@
             renderApp();
         }
 
-        // 新增：擴張情況分析計算邏輯
+        // 擴張情況分析計算邏輯 (數量自動除以2，同一個項目計畫與進行中算同一個)
         function renderExpansionAnalysis() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('expansion-analysis-content');
             if (!container) return;
 
             const colStatus = sheet.columns.findIndex(c => c.includes("Status") || c.includes("類別"));
-            const colQty = sheet.columns.findIndex(c => c.includes("Qty") || c.includes("數量"));
-            const colMachine = sheet.columns.findIndex(c => c.includes("Machine") || c.includes("機台") || c.includes("項目"));
+            
+            let totalRows = sheet.rows.length;
+            // 根據需求將總項目筆數或對應數量除以 2（計畫與進行中算同一個項目）
+            let adjustedTotalItems = Math.round((totalRows / 2) * 10) / 10;
 
-            let totalMachines = 0;
             let planCount = 0;
             let inProgressCount = 0;
             let delayedCount = 0;
             let completedCount = 0;
 
             sheet.rows.forEach(row => {
-                const status = colStatus !== -1 ? String(row[colStatus] || '').trim() : String(row[5] || '').trim();
-                const qtyVal = colQty !== -1 ? parseFloat(row[colQty]) || 1 : 1;
-
-                totalMachines += qtyVal;
+                const status = colStatus !== -1 ? String(row[colStatus] || '').trim() : String(row[4] || '').trim();
                 if (status.includes('Plan') || status.includes('計畫')) planCount++;
                 if (status.includes('In Progress') || status.includes('進行中')) inProgressCount++;
                 if (status.includes('Delayed') || status.includes('落後')) delayedCount++;
                 if (status.includes('Completed') || status.includes('完成')) completedCount++;
             });
 
+            // 各狀態數量也依相同邏輯進行除以 2 處理（如計畫與進行中折半）
+            let adjPlan = Math.round((planCount / 2) * 10) / 10;
+            let adjActive = Math.round(((inProgressCount + completedCount) / 2) * 10) / 10;
+            let adjDelayed = Math.round((delayedCount / 2) * 10) / 10;
+
             container.innerHTML = `
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-col justify-between">
-                    <span class="text-xs font-semibold text-blue-600">總擴張機台筆數 / 總數量</span>
-                    <div class="text-2xl font-bold text-blue-900 mt-2">${sheet.rows.length} <span class="text-sm font-normal text-blue-700">Items (${totalMachines} Qty)</span></div>
+                    <span class="text-xs font-semibold text-blue-600">調整後總擴張項目 (Total / 2)</span>
+                    <div class="text-2xl font-bold text-blue-900 mt-2">${adjustedTotalItems} <span class="text-sm font-normal text-blue-700">Items</span></div>
                 </div>
                 <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl flex flex-col justify-between">
-                    <span class="text-xs font-semibold text-amber-600">計畫階段 (Plan)</span>
-                    <div class="text-2xl font-bold text-amber-900 mt-2">${planCount} <span class="text-sm font-normal text-amber-700">items</span></div>
+                    <span class="text-xs font-semibold text-amber-600">計畫階段 (Plan / 2)</span>
+                    <div class="text-2xl font-bold text-amber-900 mt-2">${adjPlan} <span class="text-sm font-normal text-amber-700">items</span></div>
                 </div>
                 <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-xl flex flex-col justify-between">
-                    <span class="text-xs font-semibold text-emerald-600">進行中與完成 (In Progress / Completed)</span>
-                    <div class="text-2xl font-bold text-emerald-900 mt-2">${inProgressCount + completedCount} <span class="text-sm font-normal text-emerald-700">items</span></div>
+                    <span class="text-xs font-semibold text-emerald-600">進行中與完成 (Active / 2)</span>
+                    <div class="text-2xl font-bold text-emerald-900 mt-2">${adjActive} <span class="text-sm font-normal text-emerald-700">items</span></div>
                 </div>
                 <div class="bg-rose-50 border border-rose-100 p-4 rounded-xl flex flex-col justify-between">
-                    <span class="text-xs font-semibold text-rose-600">進度落後警示 (Delayed)</span>
-                    <div class="text-2xl font-bold text-rose-900 mt-2">${delayedCount} <span class="text-sm font-normal text-rose-700">items</span></div>
+                    <span class="text-xs font-semibold text-rose-600">進度落後警示 (Delayed / 2)</span>
+                    <div class="text-2xl font-bold text-rose-900 mt-2">${adjDelayed} <span class="text-sm font-normal text-rose-700">items</span></div>
                 </div>
             `;
         }
@@ -627,68 +628,6 @@
             renderGanttChartEN();
         }
 
-        function handleDoubleClickRemark(machineKey) {
-            if (!isLoggedIn) {
-                alert("訪客模式無法修改備註，請先登入管理者帳號。");
-                return;
-            }
-            const sheet = appData.sheets[currentSheetIndex];
-            const colRemark = sheet.columns.findIndex(c => c.includes("Remarks") || c.includes("備註"));
-            
-            let targetRow = sheet.rows.find(row => {
-                const colMachine = sheet.columns.findIndex(c => c.includes("Machine") || c.includes("機台"));
-                const mName = colMachine !== -1 ? (row[colMachine] || '') : (row[2] || '');
-                return mName.trim() === machineKey;
-            });
-
-            if (targetRow) {
-                const currentRemark = colRemark !== -1 ? targetRow[colRemark] : '';
-                const newRemark = prompt(`請輸入「${machineKey}」的新備註：`, currentRemark);
-                if (newRemark !== null) {
-                    if (colRemark !== -1) {
-                        targetRow[colRemark] = newRemark;
-                    } else {
-                        sheet.columns.push("Remarks");
-                        sheet.rows.forEach(r => r.push(""));
-                        sheet.rows[sheet.rows.length - 1][sheet.columns.length - 1] = newRemark;
-                    }
-                    saveToCloud();
-                    renderApp();
-                }
-            }
-        }
-
-        function handleDoubleClickImage(machineKey) {
-            if (!isLoggedIn) {
-                alert("訪客模式無法修改圖片連結，請先登入管理者帳號。");
-                return;
-            }
-            const sheet = appData.sheets[currentSheetIndex];
-            const colImage = sheet.columns.findIndex(c => c.includes("Image") || c.includes("圖片"));
-            
-            let targetRow = sheet.rows.find(row => {
-                const colMachine = sheet.columns.findIndex(c => c.includes("Machine") || c.includes("機台"));
-                const mName = colMachine !== -1 ? (row[colMachine] || '') : (row[2] || '');
-                return mName.trim() === machineKey;
-            });
-
-            if (targetRow) {
-                const currentImage = colImage !== -1 ? targetRow[colImage] : '';
-                const newImage = prompt(`請輸入「${machineKey}」的圖片網址/連結：`, currentImage);
-                if (newImage !== null) {
-                    if (colImage !== -1) {
-                        targetRow[colImage] = newImage;
-                    } else {
-                        sheet.columns.push("Image Link");
-                        sheet.rows.forEach(r => r.push(""));
-                        sheet.rows[sheet.rows.length - 1][sheet.columns.length - 1] = newImage;
-                    }
-                    saveToCloud();
-                    renderApp();
-                }
-            }
-        }
-
         function renderGanttChart() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('gantt-container');
@@ -700,40 +639,31 @@
             const colDept = sheet.columns.findIndex(c => c.includes("Dept") || c.includes("部門"));
             const colClass = sheet.columns.findIndex(c => c.includes("Section") || c.includes("課"));
             const colMachine = sheet.columns.findIndex(c => c.includes("Machine") || c.includes("機台"));
-            const colQty = sheet.columns.findIndex(c => c.includes("Qty") || c.includes("數量"));
             const colLocation = sheet.columns.findIndex(c => c.includes("Location") || c.includes("位置"));
             const colType = sheet.columns.findIndex(c => c.includes("Status") || c.includes("類別"));
             const colStart = sheet.columns.findIndex(c => c.includes("Start") || c.includes("開始"));
             const colEnd = sheet.columns.findIndex(c => c.includes("End") || c.includes("完成") || c.toLowerCase().includes("complete"));
-            const colRemark = sheet.columns.findIndex(c => c.includes("Remarks") || c.includes("備註"));
-            const colImage = sheet.columns.findIndex(c => c.includes("Image") || c.includes("圖片"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
                 const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
                 const machine = colMachine !== -1 ? (row[colMachine] || 'Unnamed Machine') : (row[2] || 'Unnamed Machine');
-                const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
-                const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
-                const imageLink = colImage !== -1 ? (row[colImage] || '') : '';
 
                 const key = machine.trim();
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, location, remark, imageLink, items: [] };
+                    machineMap[key] = { dept, clazz, machine, location, items: [] };
                 }
-                if (qty) machineMap[key].qty = qty;
                 if (location) machineMap[key].location = location;
-                if (remark) machineMap[key].remark = remark;
-                if (imageLink) machineMap[key].imageLink = imageLink;
 
                 machineMap[key].items.push(row);
             });
 
-            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 340}px]">
+            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 260}px]">
                     <thead>
                         <tr class="bg-gray-100 border-b text-gray-500 sticky top-0 z-30">
-                            <th class="py-2.5 px-4 text-left border-r w-[340px] bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">項目 / 資訊 (Item / Info)</th>`;
+                            <th class="py-2.5 px-4 text-left border-r w-[260px] bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">項目 / 資訊 (Item / Info)</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
                 tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100" colspan="12">${y}</th>`;
@@ -763,7 +693,7 @@
                 let activeItem = null;
 
                 group.items.forEach(row => {
-                    const type = colType !== -1 ? String(row[colType] || '') : String(row[5] || '');
+                    const type = colType !== -1 ? String(row[colType] || '') : String(row[4] || '');
                     if (type.includes('計畫') || type.toLowerCase().includes('plan')) {
                         planItem = row;
                     } else if (type.includes('進行中') || type.includes('完成') || type.includes('落後') || type.toLowerCase().includes('progress') || type.toLowerCase().includes('complete') || type.toLowerCase().includes('delay')) {
@@ -773,14 +703,14 @@
 
                 const renderBar = (item, defaultColor, topClass) => {
                     if (!item || isHidden) return '';
-                    const startVal = colStart !== -1 ? item[colStart] : item[6];
-                    const endVal = colEnd !== -1 ? item[colEnd] : item[7];
+                    const startVal = colStart !== -1 ? item[colStart] : item[5];
+                    const endVal = colEnd !== -1 ? item[colEnd] : item[6];
                     const startPct = dateToPercent(startVal);
                     const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 10);
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
-                    const typeStr = colType !== -1 ? String(item[colType] || '').trim() : String(item[5] || '').trim();
+                    const typeStr = colType !== -1 ? String(item[colType] || '').trim() : String(item[4] || '').trim();
                     let labelText = typeStr;
                     
                     if (typeStr.includes('落後') || typeStr.toLowerCase().includes('delay')) {
@@ -802,33 +732,17 @@
                     </div>`;
                 };
 
-                const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
                 const locText = group.location ? ` | Loc: ${group.location}` : '';
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium mt-1">📝 Remarks: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic mt-1">（點兩下新增備註）</div>';
-                
-                const imageBoxHtml = group.imageLink 
-                    ? `<div class="w-24 h-16 flex-shrink-0 bg-white border rounded flex items-center justify-center overflow-hidden cursor-pointer shadow-sm hover:opacity-90" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="點兩下可更換圖片">
-                           <img src="${group.imageLink}" alt="Machine Image" class="w-full h-full object-contain">
-                       </div>`
-                    : `<div class="w-24 h-16 flex-shrink-0 bg-gray-50 border border-dashed rounded flex flex-col items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-100" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="點兩下新增圖片">
-                           <span>🖼️️ 新增圖片</span>
-                       </div>`;
 
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
-                    <td class="py-3 px-3 border-r align-middle w-[340px] bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]">
-                        <div class="flex items-center space-x-3">
-                            ${imageBoxHtml}
-                            <div class="flex-1 min-w-0" ondblclick="handleDoubleClickRemark('${group.machine.trim()}')">
-                                <div class="flex justify-between items-start">
-                                    <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600 truncate" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
-                                    <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-1 flex-shrink-0">
-                                        ${isHidden ? '顯示' : '隱藏'}
-                                    </button>
-                                </div>
-                                <div class="text-[11px] text-gray-500 truncate">${group.dept} / ${group.clazz}${locText}</div>
-                                <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
-                            </div>
+                    <td class="py-3 px-3 border-r align-middle w-[260px] bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]">
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-gray-800 text-sm truncate">${group.machine}</div>
+                            <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-1 flex-shrink-0">
+                                ${isHidden ? '顯示' : '隱藏'}
+                            </button>
                         </div>
+                        <div class="text-[11px] text-gray-500 truncate">${group.dept} / ${group.clazz}${locText}</div>
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
@@ -860,40 +774,31 @@
             const colDept = sheet.columns.findIndex(c => c.includes("Dept") || c.includes("部門"));
             const colClass = sheet.columns.findIndex(c => c.includes("Section") || c.includes("課"));
             const colMachine = sheet.columns.findIndex(c => c.includes("Machine") || c.includes("機台"));
-            const colQty = sheet.columns.findIndex(c => c.includes("Qty") || c.includes("數量"));
             const colLocation = sheet.columns.findIndex(c => c.includes("Location") || c.includes("位置"));
             const colType = sheet.columns.findIndex(c => c.includes("Status") || c.includes("類別"));
             const colStart = sheet.columns.findIndex(c => c.includes("Start") || c.includes("開始"));
             const colEnd = sheet.columns.findIndex(c => c.includes("End") || c.includes("完成") || c.toLowerCase().includes("complete"));
-            const colRemark = sheet.columns.findIndex(c => c.includes("Remarks") || c.includes("備註"));
-            const colImage = sheet.columns.findIndex(c => c.includes("Image") || c.includes("圖片"));
 
             const machineMap = {};
             sheet.rows.forEach(row => {
                 const dept = colDept !== -1 ? (row[colDept] || '') : (row[0] || '');
                 const clazz = colClass !== -1 ? (row[colClass] || '') : (row[1] || '');
                 const machine = colMachine !== -1 ? (row[colMachine] || 'Unnamed Machine') : (row[2] || 'Unnamed Machine');
-                const qty = colQty !== -1 ? (row[colQty] || '') : '';
                 const location = colLocation !== -1 ? (row[colLocation] || '') : '';
-                const remark = colRemark !== -1 ? (row[colRemark] || '') : '';
-                const imageLink = colImage !== -1 ? (row[colImage] || '') : '';
 
                 const key = machine.trim();
                 if (!machineMap[key]) {
-                    machineMap[key] = { dept, clazz, machine, qty, location, remark, imageLink, items: [] };
+                    machineMap[key] = { dept, clazz, machine, location, items: [] };
                 }
-                if (qty) machineMap[key].qty = qty;
                 if (location) machineMap[key].location = location;
-                if (remark) machineMap[key].remark = remark;
-                if (imageLink) machineMap[key].imageLink = imageLink;
 
                 machineMap[key].items.push(row);
             });
 
-            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 340}px]">
+            let tableHtml = `<table class="w-full border-collapse text-xs min-w-[${months.length * 60 + 260}px]">
                     <thead>
                         <tr class="bg-gray-100 border-b text-gray-500 sticky top-0 z-30">
-                            <th class="py-2.5 px-4 text-left border-r w-[340px] bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">Item / Information</th>`;
+                            <th class="py-2.5 px-4 text-left border-r w-[260px] bg-gray-100 sticky left-0 z-40 shadow-[1px_0_0_0_#e5e7eb]">Item / Information</th>`;
             
             for (let y = minYear; y <= maxYear; y++) {
                 tableHtml += `<th class="py-1 px-1 border-r text-center bg-gray-100" colspan="12">${y}</th>`;
@@ -923,7 +828,7 @@
                 let activeItem = null;
 
                 group.items.forEach(row => {
-                    const type = colType !== -1 ? String(row[colType] || '') : String(row[5] || '');
+                    const type = colType !== -1 ? String(row[colType] || '') : String(row[4] || '');
                     if (type.includes('計畫') || type.toLowerCase().includes('plan')) {
                         planItem = row;
                     } else if (type.includes('進行中') || type.includes('完成') || type.includes('落後') || type.toLowerCase().includes('progress') || type.toLowerCase().includes('complete') || type.toLowerCase().includes('delay')) {
@@ -933,14 +838,14 @@
 
                 const renderBar = (item, defaultColor, topClass) => {
                     if (!item || isHidden) return '';
-                    const startVal = colStart !== -1 ? item[colStart] : item[6];
-                    const endVal = colEnd !== -1 ? item[colEnd] : item[7];
+                    const startVal = colStart !== -1 ? item[colStart] : item[5];
+                    const endVal = colEnd !== -1 ? item[colEnd] : item[6];
                     const startPct = dateToPercent(startVal);
                     const endPct = endVal ? dateToPercent(endVal) : Math.min(100, startPct + 10);
                     const widthPct = Math.max(3, endPct - startPct);
 
                     let barColor = defaultColor;
-                    const typeStr = colType !== -1 ? String(item[colType] || '').trim() : String(item[5] || '').trim();
+                    const typeStr = colType !== -1 ? String(item[colType] || '').trim() : String(item[4] || '').trim();
                     let labelText = typeStr;
                     
                     if (typeStr.includes('落後') || typeStr.toLowerCase().includes('delay')) {
@@ -962,33 +867,17 @@
                     </div>`;
                 };
 
-                const qtyText = group.qty ? ` (Qty: ${group.qty})` : '';
                 const locText = group.location ? ` | Loc: ${group.location}` : '';
-                const remarkText = group.remark ? `<div class="text-[11px] text-blue-600 font-medium mt-1">📝 Remarks: ${group.remark}</div>` : '<div class="text-[11px] text-gray-400 italic mt-1">(Double click to add remark)</div>';
-                
-                const imageBoxHtml = group.imageLink 
-                    ? `<div class="w-24 h-16 flex-shrink-0 bg-white border rounded flex items-center justify-center overflow-hidden cursor-pointer shadow-sm hover:opacity-90" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="Double click to change image">
-                           <img src="${group.imageLink}" alt="Machine Image" class="w-full h-full object-contain">
-                       </div>`
-                    : `<div class="w-24 h-16 flex-shrink-0 bg-gray-50 border border-dashed rounded flex flex-col items-center justify-center text-[10px] text-gray-400 cursor-pointer hover:bg-gray-100" ondblclick="event.stopPropagation(); handleDoubleClickImage('${group.machine.trim()}')" title="Double click to add image">
-                           <span>🖼️ Add Image</span>
-                       </div>`;
 
                 tableHtml += `<tr class="hover:bg-gray-50/80 transition ${isHidden ? 'opacity-40 bg-gray-50' : ''}">
-                    <td class="py-3 px-3 border-r align-middle w-[340px] bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]">
-                        <div class="flex items-center space-x-3">
-                            ${imageBoxHtml}
-                            <div class="flex-1 min-w-0" ondblclick="handleDoubleClickRemark('${group.machine.trim()}')">
-                                <div class="flex justify-between items-start">
-                                    <div class="font-bold text-gray-800 text-sm cursor-pointer hover:text-blue-600 truncate" ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${group.machine}${qtyText}</div>
-                                    <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-1 flex-shrink-0">
-                                        ${isHidden ? 'Show' : 'Hide'}
-                                    </button>
-                                </div>
-                                <div class="text-[11px] text-gray-500 truncate">${group.dept} / ${group.clazz}${locText}</div>
-                                <div ondblclick="event.stopPropagation(); handleDoubleClickRemark('${group.machine.trim()}')">${remarkText}</div>
-                            </div>
+                    <td class="py-3 px-3 border-r align-middle w-[260px] bg-white sticky left-0 z-20 shadow-[1px_0_0_0_#e5e7eb]">
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-gray-800 text-sm truncate">${group.machine}</div>
+                            <button onclick="event.stopPropagation(); toggleHideMachine('${group.machine.trim()}')" class="text-xs bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-gray-700 ml-1 flex-shrink-0">
+                                ${isHidden ? 'Show' : 'Hide'}
+                            </button>
                         </div>
+                        <div class="text-[11px] text-gray-500 truncate">${group.dept} / ${group.clazz}${locText}</div>
                     </td>`;
 
                 tableHtml += `<td colspan="${months.length}" class="p-0 relative h-20">
