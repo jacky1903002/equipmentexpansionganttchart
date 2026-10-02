@@ -540,17 +540,19 @@
             renderApp();
         }
 
-        // 中文擴張分析計算邏輯 (修正標題與邏輯)
+        // 中文擴張分析計算邏輯 (機台總數 / 總擴張項目)
         function renderExpansionAnalysis() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('expansion-analysis-content');
             if (!container) return;
 
             const colStatus = sheet.columns.findIndex(c => c.includes("Status") || c.includes("類別"));
+            const colToolCount = sheet.columns.findIndex(c => c.toLowerCase().includes("tool count") || c.includes("機台數") || c.includes("數量"));
 
             let inProgressCount = 0;
             let completedCount = 0;
             let delayedCount = 0;
+            let totalToolCountSum = 0;
 
             sheet.rows.forEach(row => {
                 const status = colStatus !== -1 ? String(row[colStatus] || '').trim() : String(row[4] || '').trim();
@@ -568,14 +570,23 @@
                 if (isDelayed) {
                     delayedCount++;
                 }
+
+                if (colToolCount !== -1) {
+                    const val = parseFloat(row[colToolCount]);
+                    if (!isNaN(val)) {
+                        totalToolCountSum += val;
+                    }
+                }
             });
 
             const planCount = inProgressCount + completedCount + delayedCount;
+            // Tool count 欄位總和除以 2 (計畫跟進行中會重複計算)
+            const totalMachines = colToolCount !== -1 ? (totalToolCountSum / 2) : planCount;
 
             container.innerHTML = `
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-col justify-between">
-                    <span class="text-xs font-semibold text-blue-600">機台筆數 / 總擴張項目</span>
-                    <div class="text-2xl font-bold text-blue-900 mt-2">${planCount} <span class="text-sm font-normal text-blue-700">items</span></div>
+                    <span class="text-xs font-semibold text-blue-600">機台總數 / 總擴張項目</span>
+                    <div class="text-2xl font-bold text-blue-900 mt-2">${totalMachines} / ${planCount} <span class="text-sm font-normal text-blue-700">items</span></div>
                 </div>
                 <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl flex flex-col justify-between">
                     <span class="text-xs font-semibold text-amber-600">計畫項目 (Plan)</span>
@@ -596,17 +607,19 @@
             `;
         }
 
-        // 英文擴張分析計算邏輯 (修正標題與邏輯)
+        // 英文擴張分析計算邏輯 (Total Machines / Total Expansion Items)
         function renderExpansionAnalysisEN() {
             const sheet = appData.sheets[currentSheetIndex];
             const container = document.getElementById('expansion-analysis-content-en');
             if (!container) return;
 
             const colStatus = sheet.columns.findIndex(c => c.includes("Status") || c.includes("類別"));
+            const colToolCount = sheet.columns.findIndex(c => c.toLowerCase().includes("tool count") || c.includes("機台數") || c.includes("數量"));
 
             let inProgressCount = 0;
             let completedCount = 0;
             let delayedCount = 0;
+            let totalToolCountSum = 0;
 
             sheet.rows.forEach(row => {
                 const status = colStatus !== -1 ? String(row[colStatus] || '').trim() : String(row[4] || '').trim();
@@ -624,14 +637,22 @@
                 if (isDelayed) {
                     delayedCount++;
                 }
+
+                if (colToolCount !== -1) {
+                    const val = parseFloat(row[colToolCount]);
+                    if (!isNaN(val)) {
+                        totalToolCountSum += val;
+                    }
+                }
             });
 
             const planCount = inProgressCount + completedCount + delayedCount;
+            const totalMachines = colToolCount !== -1 ? (totalToolCountSum / 2) : planCount;
 
             container.innerHTML = `
                 <div class="bg-blue-50 border border-blue-100 p-4 rounded-xl flex flex-col justify-between">
-                    <span class="text-xs font-semibold text-blue-600">Machine Items / Total Expansion Items</span>
-                    <div class="text-2xl font-bold text-blue-900 mt-2">${planCount} <span class="text-sm font-normal text-blue-700">items</span></div>
+                    <span class="text-xs font-semibold text-blue-600">Total Machines / Total Expansion Items</span>
+                    <div class="text-2xl font-bold text-blue-900 mt-2">${totalMachines} / ${planCount} <span class="text-sm font-normal text-blue-700">items</span></div>
                 </div>
                 <div class="bg-amber-50 border border-amber-100 p-4 rounded-xl flex flex-col justify-between">
                     <span class="text-xs font-semibold text-amber-600">Plan Items</span>
